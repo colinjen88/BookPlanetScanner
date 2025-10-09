@@ -69,17 +69,20 @@
         </div>
 
         <!-- 測試按鈕 (開發用，可隱藏) -->
-        <button id="testPopoverBtn" style="position: fixed; 
+        <button id="testSuccessBtn" style="position: fixed; 
                        bottom: 20px; 
                        right: 20px; 
                        z-index: 10000; 
-                       background: #4CAF50; 
+                       background: #059669; 
                        color: white; 
                        border: none; 
-                       padding: 10px; 
-                       border-radius: 5px; 
-                       font-size: 12px;">
-            測試Popover
+                       padding: 10px 12px; 
+                       border-radius: 8px; 
+                       font-size: 12px;
+                       font-weight: 500;
+                       cursor: pointer;
+                       box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+            📚 測試布可選書
         </button>
 
     </div>
@@ -1028,11 +1031,41 @@
                 elements.flashBtnHeader.addEventListener('click', toggleFlash);
 
                 // 測試按鈕事件
-                const testPopoverBtn = document.getElementById('testPopoverBtn');
-                if (testPopoverBtn) {
-                    testPopoverBtn.addEventListener('click', () => {
-                        log('🧪 手動觸發 popover 測試');
+                const testSuccessBtn = document.getElementById('testSuccessBtn');
+                if (testSuccessBtn) {
+                    testSuccessBtn.addEventListener('click', () => {
+                        log('📚 手動測試布可星球選書成功掃描');
+
+                        // 模擬一個成功的布可星球書籍掃描結果
+                        const mockMatch = {
+                            found: {
+                                書名: "小王子",
+                                ISBN: "9789571234567",
+                                適合對象: "6-12歲"
+                            },
+                            matchedCode: "9789571234567",
+                            original: "9789571234567"
+                        };
+
+                        // 更新統計
+                        state.stats.valid++;
+                        state.stats.success++;
+                        updateStatsDisplay();
+
+                        // 顯示成功結果（包含動畫）
+                        updateResultCardForMatch(mockMatch);
+
+                        // 顯示成功彈窗
                         showSuccessPopover();
+
+                        // 更新引擎狀態
+                        elements.engineStatus.textContent = '測試引擎 @ 模擬掃描';
+                        updateEngineBadge('測試成功', true);
+
+                        // 2秒後重置引擎狀態
+                        setTimeout(() => {
+                            updateEngineBadge('待命中...');
+                        }, 2000);
                     });
                 }
 
