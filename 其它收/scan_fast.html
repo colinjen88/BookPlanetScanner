@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <title>高成功率掃描器</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 10px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .btn {
+            padding: 20px 30px;
+            font-size: 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 10px;
+            width: 200px;
+        }
+
+        #flashBtn {
+            background: #FF9800;
+            font-size: 24px;
+            animation: blink 2s infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        #reader {
+            width: 100%;
+            margin: 10px auto;
+        }
+
+        #result {
+            margin: 15px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, .2);
+            font-size: 16px;
+            line-height: 1.8;
+        }
+
+        .big-text {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2196F3;
+        }
+
+        .success {
+            background: #e8f5e8 !important;
+            color: #2e7d32;
+        }
+
+        .error {
+            background: #ffebee !important;
+            color: #c62828;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1 style="color: #4CAF50;">📚 超級掃描器</h1>
+        <button class="btn" id="startBtn">🔍 開始掃描</button>
+        <button class="btn" id="flashBtn" style="display:none">💡 手電筒</button>
+        <button class="btn" id="stopBtn" style="display:none; background:#f44336">⏹️ 停止</button>
+        <button class="btn" id="restartBtn" style="display:none; background:#2196F3">🔄 重新開始</button>
+
+        <div id="reader" style="display:none"></div>
+        <div id="result" class="big-text">準備掃描書籍條碼</div>
+    </div>
+
+    <script>
+        let bookList = [];
+        let html5Qr = null;
+        let running = false;
+        let scanned = false;
+        let flashOn = false;
+        let stream = null;
+        let scanCount = 0;
+
+        // 載入書單
+        fetch('books_list.json')
+            .then(res => res.json())
+            .then(data => {
+                bookList = data;
+                document.getElementById('result').innerHTML = `
+                    <div class="big-text">📖 已載入 ${data.length} 本書</div>
+                    <div>點擊開始掃描按鈕</div>
+                `;
+            })
+            .catch(error => {
+                document.getElementById('result').innerHTML = '<div class="error big-text">書單載入失敗</div>';
+            });
+
+        // 極簡條碼處理
+        function processBarcode(rawCode) {
+            const cleaned = rawCode.replace(/\D/g, '');
+
+            // 處理複合條碼 (EAN-13 + EAN-5)
+            if (cleaned.length === 18) return cleaned.substring(0, 13);
+            if (cleaned.length === 15) return cleaned.substring(0, 10);
+            if (cleaned.length > 13) return cleaned.substring(0, 13);
+
+            return cleaned;
+        }
+
+        function checkBook(isbn) {
+            const processedIsbn = processBarcode(isbn);
+            console.log('處理條碼:', isbn, '->', processedIsbn);
+
+            if (processedIsbn.length < 8) {
+                document.getElementById('result').innerHTML = `
+                    <div class="error">
+                        <div class="big-text">⚠️ 條碼太短</div>
+                        <div>可能是價格碼，請掃描 ISBN 條碼</div>
+                        <div>掃描到: ${isbn}</div>
+                    </div>
+                `;
+                return;
+            }
+
+            const found = bookList.find(book => {
+                if (!book.ISBN) return false;
+                const bookIsbn = book.ISBN.replace(/\D/g, '');
+                return bookIsbn === processedIsbn;
+            });
+
+            if (found) {
+                document.getElementById('result').innerHTML = `
+                    <div class="success">
+                        <div class="big-text">🎉 找到了！</div>
+                        <div style="font-size: 20px; margin: 10px 0;"><strong>${found.書名}</strong></div>
+                        <hr>
+                        <div>ISBN: ${found.ISBN}</div>
+                        <div>適合: ${found.適合對象 || '未標示'}</div>
+                        <div style="margin-top: 15px; padding: 10px; background: #4caf50; color: white; border-radius: 8px;">
+                            ✅ 這是布可星球選書
+                        </div>
+                    </div>
+                `;
+            } else {
+                document.getElementById('result').innerHTML = `
+                    <div class="error">
+                        <div class="big-text">❌ 不在書單中</div>
+                        <div>這本書不是布可星球選書</div>
+                        <hr>
+                        <div>掃描到的條碼: ${isbn}</div>
+                        <div>處理後的 ISBN: ${processedIsbn}</div>
+                    </div>
+                `;
+            }
+        }
+
+        // 手電筒功能
+        async function toggleFlash() {
+            try {
+                if (!stream) {
+                    // 如果沒有串流，嘗試獲取
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: "environment" }
+                    });
+                }
+
+                const track = stream.getVideoTracks()[0];
+                const capabilities = track.getCapabilities();
+
+                if (capabilities.torch) {
+                    flashOn = !flashOn;
+                    await track.applyConstraints({
+                        advanced: [{ torch: flashOn }]
+                    });
+
+                    const flashBtn = document.getElementById('flashBtn');
+                    if (flashOn) {
+                        flashBtn.textContent = '💡 關燈';
+                        flashBtn.style.background = '#f44336';
+                    } else {
+                        flashBtn.textContent = '💡 手電筒';
+                        flashBtn.style.background = '#FF9800';
+                    }
+                } else {
+                    document.getElementById('flashBtn').textContent = '❌ 不支援';
+                }
+            } catch (error) {
+                console.error('手電筒錯誤:', error);
+            }
+        }
+
+        async function startScan() {
+            if (running) return;
+
+            running = true;
+            scanned = false;
+            scanCount = 0;
+
+            // 更新界面
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('restartBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'inline-block';
+            document.getElementById('flashBtn').style.display = 'inline-block';
+            document.getElementById('reader').style.display = 'block';
+
+            document.getElementById('result').innerHTML = `
+                <div style="background: linear-gradient(135deg, #4caf50, #81c784); color: white; padding: 20px; border-radius: 15px; margin: 10px 0;">
+                    <div class="big-text">🎯 高速掃描模式</div>
+                    <div style="font-size: 18px; margin-top: 10px;">
+                        📏 距離 15-20 公分<br>
+                        💡 建議開手電筒<br>
+                        📱 保持穩定
+                    </div>
+                </div>
+                <div style="font-size: 20px; color: #4caf50; font-weight: bold;">
+                    🔄 掃描中... 嘗試次數: <span id="scanCounter">0</span>
+                </div>
+            `;
+
+            try {
+                html5Qr = new Html5Qrcode("reader");
+
+                await html5Qr.start(
+                    { facingMode: "environment" },
+                    {
+                        fps: 20,  // 高頻率 - 更多嘗試機會
+                        qrbox: 250,  // 標準掃描框
+                        aspectRatio: 1.0,  // 正方形
+                        disableFlip: false
+                    },
+                    (decodedText, decodedResult) => {
+                        scanCount++;
+                        const counter = document.getElementById('scanCounter');
+                        if (counter) counter.textContent = scanCount;
+
+                        // 非常寬鬆的過濾
+                        const cleaned = decodedText.replace(/\D/g, '');
+                        if (cleaned.length < 5) {
+                            console.log(`嘗試 ${scanCount}: 跳過 ${decodedText} (${cleaned.length}位)`);
+                            return;
+                        }
+
+                        if (scanned) return;
+                        scanned = true;
+
+                        console.log(`🎉 第 ${scanCount} 次嘗試成功: ${decodedText}`);
+
+                        document.getElementById('result').innerHTML = `
+                            <div style="background: #4caf50; color: white; padding: 20px; border-radius: 15px;">
+                                <div class="big-text">✅ 掃描成功！</div>
+                                <div style="font-size: 18px; margin-top: 10px;">
+                                    經過 ${scanCount} 次嘗試<br>
+                                    條碼: ${decodedText}
+                                </div>
+                            </div>
+                        `;
+
+                        setTimeout(() => {
+                            checkBook(decodedText);
+                            setTimeout(stopScan, 4000);
+                        }, 1500);
+                    },
+                    (errorMsg) => {
+                        // 每次失敗都更新計數
+                        scanCount++;
+                        const counter = document.getElementById('scanCounter');
+                        if (counter) counter.textContent = scanCount;
+                    }
+                );
+
+                console.log('掃描器啟動成功');
+
+            } catch (error) {
+                console.error('掃描器啟動失敗:', error);
+                document.getElementById('result').innerHTML = `
+                    <div class="error big-text">
+                        ❌ 無法啟動攝影機<br>
+                        <small>${error.message}</small>
+                    </div>
+                `;
+                stopScan();
+            }
+        }
+
+        function stopScan() {
+            running = false;
+
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'none';
+            document.getElementById('flashBtn').style.display = 'none';
+            document.getElementById('restartBtn').style.display = 'inline-block';
+            document.getElementById('reader').style.display = 'none';
+
+            if (html5Qr) {
+                html5Qr.stop().then(() => html5Qr.clear()).catch(() => { });
+            }
+        }
+
+        // 事件監聽
+        document.getElementById('startBtn').onclick = startScan;
+        document.getElementById('stopBtn').onclick = stopScan;
+        document.getElementById('restartBtn').onclick = startScan;
+        document.getElementById('flashBtn').onclick = toggleFlash;
+    </script>
+</body>
+
+</html>

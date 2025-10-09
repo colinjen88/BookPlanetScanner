@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <title>攝影機測試</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+
+<body>
+    <h1>攝影機功能測試</h1>
+    <button onclick="testCamera()">測試攝影機</button>
+    <div id="reader" style="width: 300px; height: 200px; margin: 20px auto;"></div>
+    <div id="result"></div>
+
+    <script>
+        let html5Qr = null;
+
+        async function testCamera() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '正在測試攝影機...';
+
+            try {
+                // 基本攝影機權限測試
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: true
+                });
+
+                resultDiv.innerHTML = '✅ 攝影機權限正常<br>正在啟動掃描器...';
+
+                // 停止測試串流
+                stream.getTracks().forEach(track => track.stop());
+
+                // 測試 html5-qrcode
+                html5Qr = new Html5Qrcode("reader");
+
+                await html5Qr.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: 250 },
+                    (decodedText, decodedResult) => {
+                        resultDiv.innerHTML = `✅ 掃描器正常工作<br>掃描到: ${decodedText}`;
+                        setTimeout(() => {
+                            html5Qr.stop();
+                        }, 2000);
+                    },
+                    (errorMsg) => { }
+                );
+
+                resultDiv.innerHTML = '✅ 掃描器啟動成功！請嘗試掃描條碼';
+
+            } catch (error) {
+                console.error('測試失敗:', error);
+                resultDiv.innerHTML = `❌ 測試失敗: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+
+</html>

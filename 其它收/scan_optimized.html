@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <title>布可星球條碼查詢</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 1em;
+            background: #f0f0f0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            font-size: 16px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px;
+            min-width: 120px;
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        #flashBtn {
+            background: #FF9800;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        #reader {
+            width: 100%;
+            max-width: 500px;
+            margin: 20px auto;
+        }
+
+        #result {
+            margin: 20px auto;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .1);
+            max-width: 600px;
+            word-break: break-word;
+            min-height: 3em;
+            line-height: 1.5;
+            border: 2px solid #e0e0e0;
+        }
+
+        .success {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .error {
+            color: #f44336;
+            font-weight: bold;
+        }
+
+        h1 {
+            color: #2196F3;
+            margin-bottom: 1em;
+        }
+
+        .scan-tips {
+            background: #e3f2fd;
+            border: 1px solid #2196F3;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 10px 0;
+            font-size: 14px;
+            text-align: left;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>布可星球條碼查詢</h1>
+        <button class="btn" id="startBtn">開始掃描</button>
+        <button class="btn" id="stopBtn" style="display:none">停止掃描</button>
+        <button class="btn" id="restartBtn" style="display:none; background:#4CAF50">重新掃描</button>
+        <button class="btn" id="flashBtn" style="display:none">💡 開燈</button>
+        <div id="reader" style="display:none"></div>
+        <div id="result">請點擊開始掃描</div>
+    </div>
+    <script>
+        let bookList = [];
+        let html5Qr = null;
+        let running = false;
+        let scanned = false;
+        let flashOn = false;
+        let stream = null;
+
+        // 載入書單
+        fetch('books_list.json')
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.json();
+            })
+            .then(data => {
+                bookList = data;
+                document.getElementById('result').textContent = `準備就緒，已載入${data.length}本書，請點擊開始掃描`;
+            })
+            .catch(error => {
+                console.error('書單載入錯誤:', error);
+                document.getElementById('result').innerHTML = '<span class="error">書單載入失敗</span>';
+            });
+
+        // 解析複合條碼
+        function parseCompositeBarcode(barcode) {
+            const cleaned = barcode.replace(/\D/g, '');
+            if (cleaned.length === 18) {
+                return cleaned.substring(0, 13); // EAN-13 + EAN-5
+            } else if (cleaned.length === 15) {
+                return cleaned.substring(0, 10); // EAN-10 + EAN-5
+            } else if (cleaned.length > 15) {
+                return cleaned.substring(0, 13);
+            }
+            return cleaned;
+        }
+
+        function checkBook(isbn) {
+            if (!bookList.length) {
+                document.getElementById('result').innerHTML = '<span class="error">書單未載入</span>';
+                return;
+            }
+
+            const cleanIsbn = parseCompositeBarcode(isbn);
+            console.log('原始掃描:', isbn, '處理後:', cleanIsbn);
+
+            if (cleanIsbn.length < 6) {
+                document.getElementById('result').innerHTML = '<span class="error">條碼太短，可能是價格碼</span>';
+                return;
+            }
+
+            if (cleanIsbn.length !== 10 && cleanIsbn.length !== 13) {
+                document.getElementById('result').innerHTML = '<span class="error">無效的 ISBN 格式</span>';
+                return;
+            }
+
+            const found = bookList.find(b => {
+                if (!b.ISBN) return false;
+                const bookCleanIsbn = b.ISBN.replace(/\D/g, '');
+                return bookCleanIsbn === cleanIsbn;
+            });
+
+            if (found) {
+                document.getElementById('result').innerHTML = `
+                    <div class="success">
+                        <h2>✓ 布可星球選書</h2>
+                        <hr>
+                        書名：${found.書名}<br>
+                        ISBN：${found.ISBN}<br>
+                        適合對象：${found.適合對象 || '未提供'}
+                    </div>`;
+            } else {
+                document.getElementById('result').innerHTML = `
+                    <div class="error">
+                        <h2>✗ 非布可星球書本</h2>
+                        <hr>
+                        掃描的 ISBN：${isbn}
+                    </div>`;
+            }
+        }
+
+        // 手電筒控制
+        async function toggleFlash() {
+            if (!stream) {
+                console.log('沒有攝影機串流');
+                return;
+            }
+
+            try {
+                const track = stream.getVideoTracks()[0];
+                const capabilities = track.getCapabilities();
+
+                if (capabilities.torch) {
+                    flashOn = !flashOn;
+                    await track.applyConstraints({
+                        advanced: [{ torch: flashOn }]
+                    });
+
+                    const flashBtn = document.getElementById('flashBtn');
+                    if (flashOn) {
+                        flashBtn.textContent = '💡 關燈';
+                        flashBtn.style.background = '#FF5722';
+                    } else {
+                        flashBtn.textContent = '💡 開燈';
+                        flashBtn.style.background = '#FF9800';
+                    }
+                } else {
+                    document.getElementById('flashBtn').textContent = '不支援';
+                    document.getElementById('flashBtn').disabled = true;
+                }
+            } catch (error) {
+                console.error('手電筒控制失敗:', error);
+            }
+        }
+
+        async function getCameraStream() {
+            try {
+                const s = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: "environment",
+                        width: { ideal: 1920, min: 1280 },
+                        height: { ideal: 1080, min: 720 }
+                    }
+                });
+                return s;
+            } catch (error) {
+                console.error('無法獲取攝影機串流:', error);
+                return null;
+            }
+        }
+
+        async function startScan() {
+            if (running) return;
+
+            running = true;
+            scanned = false;
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('restartBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'inline-block';
+            document.getElementById('reader').style.display = 'block';
+
+            // 顯示實體書掃描提示
+            document.getElementById('result').innerHTML = `
+                <div class="scan-tips">
+                    <strong>📖 實體書掃描技巧：</strong><br>
+                    • 距離書本 <strong>15-25 公分</strong><br>
+                    • 條碼要 <strong>完全填滿</strong> 掃描框<br>
+                    • 保持手機 <strong>水平穩定</strong><br>
+                    • 光線充足很重要，必要時開燈<br>
+                    • 避免陰影和反光
+                </div>
+                <div style="color: #2196F3; font-weight: bold;">掃描中...</div>
+            `;
+
+            try {
+                html5Qr = new Html5Qrcode("reader");
+
+                html5Qr.start(
+                    { facingMode: "environment" },
+                    {
+                        fps: 2,  // 極低頻率，給每次掃描最多時間
+                        qrbox: { width: 400, height: 200 },  // 大掃描框
+                        aspectRatio: 2.0,
+                        disableFlip: false,
+                        // 實體書優化
+                        videoConstraints: {
+                            width: { ideal: 1920, min: 1280 },
+                            height: { ideal: 1080, min: 720 }
+                        }
+                    },
+                    (decodedText, decodedResult) => {
+                        // 過濾明顯錯誤的結果
+                        const cleaned = decodedText.replace(/\D/g, '');
+                        if (cleaned.length < 8) {
+                            console.log('跳過短條碼:', decodedText);
+                            return;
+                        }
+
+                        if (scanned) return;
+                        scanned = true;
+
+                        console.log('掃描成功:', decodedText);
+
+                        document.getElementById('result').innerHTML = `
+                            <div style="color: green; font-size: 16px;">
+                                🎉 掃描成功！<br>
+                                條碼：${decodedText}<br>
+                                <div style="color: #666; font-size: 14px;">正在查詢書籍資料...</div>
+                            </div>
+                        `;
+
+                        setTimeout(() => {
+                            checkBook(decodedText);
+                            setTimeout(stopScan, 2500);
+                        }, 800);
+                    },
+                    (errorMsg) => { }
+                ).then(() => {
+                    console.log('掃描器啟動成功');
+                    document.getElementById('flashBtn').style.display = 'inline-block';
+
+                    // 10秒後提供額外提示
+                    setTimeout(() => {
+                        if (running && !scanned) {
+                            document.getElementById('result').innerHTML += `
+                                <div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-radius: 5px; color: #856404;">
+                                    <strong>💡 掃描困難？試試這些方法：</strong><br>
+                                    • 點擊 💡 開燈增加亮度<br>
+                                    • 調整到 15-20 公分距離<br>
+                                    • 確保條碼清晰可見<br>
+                                    • 稍微傾斜避免反光
+                                </div>
+                            `;
+                        }
+                    }, 10000);
+
+                    // 獲取攝影機串流用於手電筒
+                    getCameraStream().then(s => {
+                        if (s) stream = s;
+                    });
+                }).catch(err => {
+                    console.error('掃描啟動失敗:', err);
+                    document.getElementById('result').innerHTML = `<span class="error">掃描啟動失敗，請檢查攝影機權限</span>`;
+                    stopScan();
+                });
+            } catch (error) {
+                console.error('初始化失敗:', error);
+                document.getElementById('result').innerHTML = `<span class="error">初始化失敗</span>`;
+                stopScan();
+            }
+        }
+
+        function stopScan() {
+            running = false;
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'none';
+            document.getElementById('flashBtn').style.display = 'none';
+            document.getElementById('restartBtn').style.display = 'inline-block';
+            document.getElementById('reader').style.display = 'none';
+
+            // 關閉手電筒
+            if (flashOn && stream) {
+                toggleFlash();
+            }
+
+            if (html5Qr) {
+                html5Qr.stop().then(() => {
+                    html5Qr.clear();
+                }).catch(() => { });
+            }
+
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+        }
+
+        document.getElementById('startBtn').onclick = startScan;
+        document.getElementById('stopBtn').onclick = stopScan;
+        document.getElementById('restartBtn').onclick = startScan;
+        document.getElementById('flashBtn').onclick = toggleFlash;
+    </script>
+</body>
+
+</html>

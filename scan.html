@@ -1,0 +1,1525 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <title>布可星球條碼掃描器</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <script src="https://unpkg.com/@zxing/browser@latest"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --primary-light: #3b82f6;
+            --success: #059669;
+            --success-light: #10b981;
+            --error: #dc2626;
+            --error-light: #ef4444;
+            --warning: #d97706;
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --surface: rgba(30, 41, 59, 0.95);
+            --surface-light: rgba(51, 65, 85, 0.8);
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border: rgba(148, 163, 184, 0.2);
+            --border-light: rgba(203, 213, 225, 0.3);
+            --shadow: rgba(0, 0, 0, 0.25);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #0c1420 50%, #020617 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 8px;
+            position: relative;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(28px, 5vw, 42px);
+            font-weight: 700;
+
+            letter-spacing: -0.02em;
+        }
+
+        h1 span {
+            background: linear-gradient(135deg, var(--primary-light), var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-align: center;
+        }
+
+        .header-flash-btn {
+            padding: 12px 16px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary-light), var(--primary-dark));
+            color: var(--text-primary);
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2),
+                0 2px 8px rgba(37, 99, 235, 0.15);
+            overflow: hidden;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            height: 40px;
+            min-width: 144px;
+            border-radius: 6px;
+            position: absolute;
+            right: 0;
+        }
+
+        .header-flash-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            filter: grayscale(0.3);
+        }
+
+        .header-flash-btn:hover:not(:disabled) {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3),
+                0 3px 12px rgba(37, 99, 235, 0.2);
+        }
+
+        .header-flash-btn.flash-on {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            animation: header-flash-pulse 1.2s ease-in-out infinite;
+        }
+
+        @keyframes header-flash-pulse {
+
+            0%,
+            100% {
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2),
+                    0 2px 8px rgba(217, 119, 6, 0.15);
+            }
+
+            50% {
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2),
+                    0 2px 8px rgba(217, 119, 6, 0.4),
+                    0 0 15px rgba(217, 119, 6, 0.3);
+            }
+        }
+
+        .subtitle {
+            margin: 0 0 32px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 16px;
+            font-weight: 500;
+            letter-spacing: 0.01em;
+        }
+
+        .button-row {
+            display: flex;
+            align-items: stretch;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .button-row .btn-flash {
+            flex: 0 0 calc(33.333% - 8px);
+        }
+
+        .button-row .btn-main {
+            flex: auto;
+        }
+
+        .button-row .btn.single {
+            flex: 1 !important;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .button-row #flashBtn {
+            display: none !important;
+        }
+
+        button.btn {
+            padding: 18px 24px;
+            border: none;
+            border-radius: 18px;
+            background: linear-gradient(135deg, var(--primary-light), var(--primary-dark));
+            color: var(--text-primary);
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 17px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(16px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
+                0 4px 16px rgba(37, 99, 235, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            position: relative;
+            overflow: hidden;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            letter-spacing: 0.02em;
+            min-height: 60px;
+        }
+
+        button.btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.15) 0%,
+                    rgba(255, 255, 255, 0.05) 50%,
+                    rgba(255, 255, 255, 0.1) 100%);
+            pointer-events: none;
+            transition: all 0.3s ease;
+            opacity: 0.7;
+        }
+
+        button.btn::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+        }
+
+        button.btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+            filter: grayscale(0.3);
+        }
+
+        button.btn:hover:not(:disabled) {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4),
+                0 6px 20px rgba(37, 99, 235, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        button.btn:hover:not(:disabled)::before {
+            opacity: 1;
+        }
+
+        button.btn:hover:not(:disabled)::after {
+            transform: translateX(100%);
+        }
+
+        button.btn:active:not(:disabled) {
+            transform: translateY(-2px) scale(0.98);
+            transition: all 0.1s ease;
+        }
+
+        button.btn.danger {
+            background: linear-gradient(135deg, var(--error-light), var(--error));
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
+                0 4px 16px rgba(220, 38, 38, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        }
+
+        button.btn.danger:hover:not(:disabled) {
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4),
+                0 6px 20px rgba(220, 38, 38, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        button.btn.flash-on {
+            background: linear-gradient(135deg, #f59e0b, var(--warning));
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
+                0 4px 16px rgba(217, 119, 6, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            animation: flash-pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes flash-pulse {
+
+            0%,
+            100% {
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
+                    0 4px 16px rgba(217, 119, 6, 0.2),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            }
+
+            50% {
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
+                    0 4px 16px rgba(217, 119, 6, 0.4),
+                    0 0 20px rgba(217, 119, 6, 0.3),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            }
+        }
+
+        /* Flash button specific styling */
+        .btn-flash {
+            font-size: 14px !important;
+            padding: 18px 16px !important;
+        }
+
+        .btn-flash.flash-on {
+            background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+        }
+
+        /* Main action button styling */
+        .btn-main {
+            font-size: 17px !important;
+            font-weight: 700 !important;
+        }
+
+        .video-shell {
+            position: relative;
+            width: 100%;
+            background: var(--bg-secondary);
+            border-radius: 28px;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.08);
+            aspect-ratio: 16/9;
+            margin-bottom: 20px;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4),
+                0 6px 24px rgba(0, 0, 0, 0.2),
+                inset 0 2px 0 rgba(255, 255, 255, 0.08),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(20px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .video-shell:hover {
+            border-color: rgba(59, 130, 246, 0.3);
+            box-shadow: 0 16px 64px rgba(0, 0, 0, 0.5),
+                0 8px 32px rgba(37, 99, 235, 0.1),
+                inset 0 2px 0 rgba(255, 255, 255, 0.1),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+        }
+
+        video#preview {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: black;
+        }
+
+        .roi-overlay {
+            position: absolute;
+            border: 3px dashed var(--primary-light);
+            border-radius: 16px;
+            box-shadow: 0 0 40px rgba(37, 99, 235, 0.3), inset 0 0 20px rgba(37, 99, 235, 0.1);
+            display: none;
+            pointer-events: none;
+            animation: roi-pulse 2s infinite ease-in-out;
+        }
+
+        @keyframes roi-pulse {
+
+            0%,
+            100% {
+                opacity: 0.8;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        .hud-badge {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            background: rgba(15, 23, 42, 0.9);
+            border-radius: 12px;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 500;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-secondary);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 16px var(--shadow);
+        }
+
+        .result-card {
+            margin-bottom: 24px;
+            padding: 28px;
+            border-radius: 24px;
+            background: var(--surface);
+            border: 2px solid rgba(255, 255, 255, 0.06);
+            line-height: 1.7;
+            min-height: 120px;
+            font-size: 16px;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3),
+                0 6px 24px rgba(0, 0, 0, 0.15),
+                inset 0 2px 0 rgba(255, 255, 255, 0.08),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(20px);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+        }
+
+        .result-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 24px;
+            padding: 2px;
+            background: linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.1),
+                    transparent,
+                    rgba(255, 255, 255, 0.05));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: subtract;
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: subtract;
+            pointer-events: none;
+        }
+
+        .result-card.success {
+            background: linear-gradient(135deg,
+                    rgba(5, 150, 105, 0.15),
+                    rgba(16, 185, 129, 0.1));
+            border-color: var(--success);
+            color: var(--text-primary);
+            box-shadow: 0 8px 32px var(--shadow),
+                0 4px 16px rgba(5, 150, 105, 0.2),
+                inset 0 1px 0 rgba(16, 185, 129, 0.2);
+        }
+
+        .result-card.success::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg,
+                    rgba(16, 185, 129, 0.05),
+                    rgba(5, 150, 105, 0.02));
+            border-radius: 20px;
+            pointer-events: none;
+        }
+
+        .result-card.error {
+            background: linear-gradient(135deg,
+                    rgba(220, 38, 38, 0.2),
+                    rgba(239, 68, 68, 0.15));
+            border-color: var(--error);
+            color: var(--text-primary);
+            box-shadow: 0 8px 32px var(--shadow),
+                0 4px 16px rgba(220, 38, 38, 0.25),
+                inset 0 1px 0 rgba(239, 68, 68, 0.2);
+            animation: error-shake 0.5s ease-in-out;
+        }
+
+        @keyframes error-shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-4px);
+            }
+
+            75% {
+                transform: translateX(4px);
+            }
+        }
+
+        .error-icon {
+            display: inline-block;
+            animation: error-bounce 1s ease-in-out infinite;
+        }
+
+        @keyframes error-bounce {
+
+            0%,
+            20%,
+            50%,
+            80%,
+            100% {
+                transform: translateY(0) scale(1);
+            }
+
+            10% {
+                transform: translateY(-3px) scale(1.1);
+            }
+
+            30% {
+                transform: translateY(-2px) scale(1.05);
+            }
+
+            60% {
+                transform: translateY(-1px) scale(1.02);
+            }
+        }
+
+        .result-card.error .error-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--error-light);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .result-card.success .success-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--success-light);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-board {
+            margin-bottom: 20px;
+            padding: 20px;
+            border-radius: 16px;
+            background: var(--surface-light);
+            border: 1px solid var(--border);
+            display: grid;
+            row-gap: 12px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 16px var(--shadow);
+        }
+
+        .status-board span {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+
+
+        .success-popover {
+            position: fixed;
+            background: linear-gradient(135deg, var(--success), var(--success-light));
+            color: white;
+            padding: 16px 30px;
+            border-radius: 5px;
+            font-size: 18px;
+            font-weight: 700;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4),
+                0 6px 24px rgba(5, 150, 105, 0.5),
+                0 0 0 2px rgba(255, 255, 255, 0.1);
+            z-index: 9999;
+            opacity: 0;
+            transform: translateX(-50%) translateY(-20px) scale(0.85);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none;
+            white-space: nowrap;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(12px);
+        }
+
+        .success-popover.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0) scale(1);
+        }
+
+        .success-popover::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 14px solid transparent;
+            border-top-color: var(--success);
+            filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.25));
+        }
+
+        .success-popover.fade-out {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-20px) scale(0.85);
+            transition: all 0.4s ease-out;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 16px;
+            }
+
+            .header-row {
+                gap: 12px;
+            }
+
+            .header-flash-btn {
+                padding: 10px 12px;
+                min-width: 60px;
+                height: 36px;
+                font-size: 12px;
+            }
+
+            .button-row {
+                flex-direction: row;
+                gap: 8px;
+            }
+
+            .button-row .btn-flash {
+                flex: 0 0 30%;
+                font-size: 13px !important;
+                padding: 16px 12px !important;
+            }
+
+            .button-row .btn-main {
+                font-size: 17px !important;
+                padding: 16px 20px !important;
+            }
+
+            h1 {
+                font-size: clamp(24px, 6vw, 32px);
+            }
+
+            .subtitle {
+                font-size: 15px;
+                margin-bottom: 24px;
+            }
+
+            .result-card {
+                padding: 20px;
+                font-size: 15px;
+            }
+
+            .status-board {
+                padding: 16px;
+                font-size: 13px;
+            }
+
+            .success-popover {
+                font-size: 15px;
+                padding: 10px 16px;
+            }
+
+            .success-popover::after {
+                border-width: 12px;
+            }
+
+            .video-shell {
+                border-radius: 20px;
+            }
+
+            .result-card {
+                border-radius: 18px;
+                padding: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header-row {
+                gap: 8px;
+            }
+
+            .header-flash-btn {
+                padding: 8px 10px;
+                min-width: 88px;
+                height: 32px;
+                font-size: 11px;
+            }
+
+            .button-row {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .button-row .btn-flash,
+            .button-row .btn-main {
+                flex: 1;
+                font-size: 14px !important;
+                padding: 14px 20px !important;
+                min-height: 52px;
+            }
+
+            .success-popover {
+                font-size: 14px;
+                padding: 8px 12px;
+            }
+
+            .success-popover::after {
+                border-width: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header-row">
+            <h1>📘<span>布可星球查詢</span></h1>
+            <button class="header-flash-btn" id="flashBtnHeader" disabled>
+                <span id="flashIconHeader">🔦手電筒</span>
+            </button>
+        </div>
+        <p class="subtitle">掃描書本條碼，判別是否為布可星球選書。</p>
+
+        <div class="button-row">
+            <button class="btn btn-main" id="startBtn">🚀 開始掃描條碼</button>
+            <button class="btn btn-main danger" id="stopBtn" disabled style="display: none;">⏹️ 停止</button>
+        </div>
+
+        <div class="video-shell" id="videoShell">
+            <video id="preview" autoplay playsinline muted></video>
+            <div class="roi-overlay" id="roiOverlay"></div>
+            <span class="hud-badge" id="engineBadge">待命中…</span>
+        </div>
+
+        <div class="result-card" id="resultCard">
+            ✅ 載入後請點「開始掃描」，將書本條碼置中並維持 15-20 公分距離。
+        </div>
+
+        <div class="status-board" id="statusBoard">
+            <div>📷 相機狀態：<span id="cameraStatus">尚未啟動</span></div>
+            <div>🧠 引擎狀態：<span id="engineStatus">尚未掃描</span></div>
+        </div>
+
+        <div class="success-popover" id="successPopover">
+            ✅ 掃描成功！
+        </div>
+
+        <!-- 測試按鈕 (開發用，可隱藏) -->
+        <button id="testPopoverBtn"
+            style="position: fixed; bottom: 20px; right: 20px; z-index: 10000; background: #4CAF50; color: white; border: none; padding: 10px; border-radius: 5px; font-size: 12px;">測試Popover</button>
+
+    </div>
+
+    <canvas id="processingCanvas" class="hidden"></canvas>
+    <canvas id="scratchCanvas" class="hidden"></canvas>
+
+    <script>
+        (() => {
+            const elements = {
+                startBtn: document.getElementById('startBtn'),
+                stopBtn: document.getElementById('stopBtn'),
+                flashBtnHeader: document.getElementById('flashBtnHeader'),
+                flashIconHeader: document.getElementById('flashIconHeader'),
+                preview: document.getElementById('preview'),
+                roiOverlay: document.getElementById('roiOverlay'),
+                engineBadge: document.getElementById('engineBadge'),
+                cameraStatus: document.getElementById('cameraStatus'),
+                engineStatus: document.getElementById('engineStatus'),
+                resultCard: document.getElementById('resultCard'),
+                statusBoard: document.getElementById('statusBoard'),
+                successPopover: document.getElementById('successPopover')
+            };
+
+            const processingCanvas = document.getElementById('processingCanvas');
+            const processingCtx = processingCanvas.getContext('2d', { willReadFrequently: true });
+            const scratchCanvas = document.getElementById('scratchCanvas');
+            const scratchCtx = scratchCanvas.getContext('2d', { willReadFrequently: true });
+
+            const state = {
+                running: false,
+                detectionBusy: false,
+                lastDetectionAt: 0,
+                bookList: [],
+                stream: null,
+                track: null,
+                flashOn: false,
+                detectors: {
+                    barcodeDetector: null,
+                    multiFormatReader: null
+                },
+                stats: {
+                    frames: 0,
+                    valid: 0,
+                    success: 0
+                },
+                roi: {
+                    enabled: true,
+                    widthRatio: 0.78,
+                    heightRatio: 0.42
+                },
+                processing: {
+                    contrast: 1.35,
+                    brightness: 1.05,
+                    gamma: 0.9,
+                    denoise: true,
+                    sharpen: true
+                },
+                detection: {
+                    allowRotation: true,
+                    allowSlices: true,
+                    useBarcodeDetector: true,
+                    useZxing: true,
+                    intervalMs: 120,
+                    rotationAngles: [-12, -6, 6, 12],
+                    slices: [
+                        { label: '中心', topRatio: 0.25, heightRatio: 0.5 },
+                        { label: '上方', topRatio: 0.05, heightRatio: 0.45 },
+                        { label: '下方', topRatio: 0.5, heightRatio: 0.45 }
+                    ]
+                },
+                lastCodes: [],
+                logSize: 120
+            };
+
+            const SUPPORTED_FORMATS = [
+                'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'code_93', 'itf', 'codabar'
+            ];
+
+            let ZXING_AVAILABLE = false;
+            let ZXING_FORMATS = [];
+
+            // 檢查 ZXing 是否可用（延遲檢查）
+            function checkZXingAvailability() {
+                try {
+                    ZXING_AVAILABLE = typeof window.ZXing !== 'undefined' && typeof window.ZXingBrowser !== 'undefined';
+                    if (ZXING_AVAILABLE) {
+                        ZXING_FORMATS = [
+                            ZXing.BarcodeFormat.EAN_13,
+                            ZXing.BarcodeFormat.EAN_8,
+                            ZXing.BarcodeFormat.UPC_A,
+                            ZXing.BarcodeFormat.UPC_E,
+                            ZXing.BarcodeFormat.CODE_128,
+                            ZXing.BarcodeFormat.CODE_39,
+                            ZXing.BarcodeFormat.ITF
+                        ];
+                    }
+                    return ZXING_AVAILABLE;
+                } catch (error) {
+                    log(`ZXing 檢查失敗：${error.message}`);
+                    ZXING_AVAILABLE = false;
+                    return false;
+                }
+            }
+
+            function clamp(value, min = 0, max = 255) {
+                return Math.min(max, Math.max(min, value));
+            }
+
+            function log(message) {
+                // Console logging only for debugging
+                console.log(`[${new Date().toLocaleTimeString('zh-TW', { hour12: false })}] ${message}`);
+            }
+
+            async function loadBookList() {
+                try {
+                    const response = await fetch('books_list.json');
+                    state.bookList = await response.json();
+                    elements.resultCard.classList.remove('error', 'success');
+                    elements.resultCard.textContent = `📚 已載入 ${state.bookList.length} 本布可星球選書，準備開始掃描。`;
+                } catch (error) {
+                    elements.resultCard.classList.add('error');
+                    elements.resultCard.textContent = '❌ 書單載入失敗，請確認 books_list.json 是否存在。';
+                    log(`書單載入失敗：${error.message}`);
+                }
+            }
+
+            function initDetectors() {
+                // 初始化 BarcodeDetector
+                if ('BarcodeDetector' in window) {
+                    try {
+                        state.detectors.barcodeDetector = new BarcodeDetector({ formats: SUPPORTED_FORMATS });
+                        log('✅ BarcodeDetector 已啟用');
+                    } catch (error) {
+                        log(`⚠️ BarcodeDetector 初始化失敗：${error.message}`);
+                        state.detectors.barcodeDetector = null;
+                        state.detection.useBarcodeDetector = false;
+                    }
+                } else {
+                    log('ℹ️ 此裝置尚未支援 BarcodeDetector 原生 API。');
+                    state.detectors.barcodeDetector = null;
+                    state.detection.useBarcodeDetector = false;
+                }
+
+                // 延遲初始化 ZXing
+                setTimeout(() => {
+                    if (!checkZXingAvailability()) {
+                        log('ℹ️ ZXing Browser 套件未完全載入，將主要依賴原生引擎。');
+                        state.detectors.multiFormatReader = null;
+                        state.detection.useZxing = false;
+                        return;
+                    }
+
+                    try {
+                        const hints = new Map();
+                        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, ZXING_FORMATS);
+                        hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+                        const reader = new ZXing.MultiFormatReader();
+                        reader.setHints(hints);
+                        state.detectors.multiFormatReader = reader;
+                        log('✅ ZXing MultiFormatReader 已啟用');
+                    } catch (error) {
+                        log(`⚠️ ZXing 初始化失敗：${error.message}`);
+                        state.detectors.multiFormatReader = null;
+                        state.detection.useZxing = false;
+                    }
+                }, 1000); // 延遲1秒初始化ZXing
+            }
+
+            function updateRoiOverlay() {
+                if (!state.roi.enabled) {
+                    elements.roiOverlay.style.display = 'none';
+                    return;
+                }
+                const video = elements.preview;
+                if (!video.videoWidth || !video.videoHeight) {
+                    elements.roiOverlay.style.display = 'none';
+                    return;
+                }
+                const container = document.getElementById('videoShell');
+                const rect = container.getBoundingClientRect();
+                const roiWidth = rect.width * state.roi.widthRatio;
+                const roiHeight = rect.height * state.roi.heightRatio;
+                elements.roiOverlay.style.display = 'block';
+                elements.roiOverlay.style.width = `${roiWidth}px`;
+                elements.roiOverlay.style.height = `${roiHeight}px`;
+                elements.roiOverlay.style.left = `${(rect.width - roiWidth) / 2}px`;
+                elements.roiOverlay.style.top = `${(rect.height - roiHeight) / 2}px`;
+            }
+
+            function resetStats() {
+                state.stats.frames = 0;
+                state.stats.valid = 0;
+                state.stats.success = 0;
+                state.lastCodes = [];
+                updateStatsDisplay();
+            }
+
+            function updateStatsDisplay() {
+                // Stats tracking kept for internal logic but not displayed
+            }
+
+            function pushRecentCode(code) {
+                state.lastCodes.push(code);
+                if (state.lastCodes.length > 12) state.lastCodes.shift();
+            }
+
+            function wasRecentlySeen(code) {
+                return state.lastCodes.includes(code);
+            }
+
+            function applyImageProcessing(imageData, width, height) {
+                const data = imageData.data;
+                const contrast = state.processing.contrast;
+                const brightness = state.processing.brightness;
+                const gamma = state.processing.gamma;
+
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    let gray = 0.299 * r + 0.587 * g + 0.114 * b;
+                    gray = gray * brightness;
+                    gray = (gray - 128) * contrast + 128;
+                    gray = 255 * Math.pow(clamp(gray) / 255, gamma);
+                    const value = clamp(gray);
+                    data[i] = data[i + 1] = data[i + 2] = value;
+                }
+
+                if (state.processing.denoise) {
+                    applyBoxBlur(imageData, width, height);
+                }
+
+                if (state.processing.sharpen) {
+                    applyUnsharpMask(imageData, width, height);
+                }
+            }
+
+            function applyBoxBlur(imageData, width, height) {
+                const data = imageData.data;
+                const original = new Uint8ClampedArray(data);
+                const kernel = [
+                    1, 1, 1,
+                    1, 1, 1,
+                    1, 1, 1
+                ];
+                const kernelWeight = 9;
+                for (let y = 1; y < height - 1; y++) {
+                    for (let x = 1; x < width - 1; x++) {
+                        let sum = 0;
+                        let idxKernel = 0;
+                        for (let ky = -1; ky <= 1; ky++) {
+                            for (let kx = -1; kx <= 1; kx++) {
+                                const idx = ((y + ky) * width + (x + kx)) * 4;
+                                sum += original[idx] * kernel[idxKernel++];
+                            }
+                        }
+                        const value = clamp(sum / kernelWeight);
+                        const target = (y * width + x) * 4;
+                        data[target] = data[target + 1] = data[target + 2] = value;
+                    }
+                }
+            }
+
+            function applyUnsharpMask(imageData, width, height) {
+                const data = imageData.data;
+                const original = new Uint8ClampedArray(data);
+                const amount = 0.6;
+                for (let y = 1; y < height - 1; y++) {
+                    for (let x = 1; x < width - 1; x++) {
+                        const idx = (y * width + x) * 4;
+                        const center = original[idx];
+                        const north = original[idx - width * 4];
+                        const south = original[idx + width * 4];
+                        const east = original[idx + 4];
+                        const west = original[idx - 4];
+                        const laplace = (4 * center) - north - south - east - west;
+                        const value = clamp(center + amount * laplace);
+                        data[idx] = data[idx + 1] = data[idx + 2] = value;
+                    }
+                }
+            }
+
+            function computeRoi(videoWidth, videoHeight) {
+                if (!state.roi.enabled) {
+                    return { sx: 0, sy: 0, sw: videoWidth, sh: videoHeight };
+                }
+                const sw = videoWidth * state.roi.widthRatio;
+                const sh = videoHeight * state.roi.heightRatio;
+                const sx = (videoWidth - sw) / 2;
+                const sy = (videoHeight - sh) / 2;
+                return { sx, sy, sw, sh };
+            }
+
+            function updateResultCardForMatch(match) {
+                if (match.found) {
+                    elements.resultCard.classList.remove('error');
+                    elements.resultCard.classList.add('success');
+                    elements.resultCard.innerHTML = `
+                        <div class="success-title">
+                            <span>🎉</span>
+                            找到布可星球選書
+                        </div>
+                        <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">
+                            ${match.found.書名}
+                        </div>
+                        <div style="margin-bottom: 4px;">
+                            <strong>ISBN：</strong>${match.found.ISBN}
+                        </div>
+                        <div style="margin-bottom: 12px;">
+                            <strong>適合對象：</strong>${match.found.適合對象 || '未標示'}
+                        </div>
+                        <div style="font-size: 13px; color: var(--text-muted); padding-top: 8px; border-top: 1px solid rgba(16, 185, 129, 0.2);">
+                            匹配條碼：${match.matchedCode}
+                        </div>
+                    `;
+                } else {
+                    elements.resultCard.classList.remove('success');
+                    elements.resultCard.classList.add('error');
+                    elements.resultCard.innerHTML = `
+                        <div class="error-title">
+                            <span class="error-icon">⚠️</span>
+                            未在布可星球書單中
+                        </div>
+                        <div style="font-size: 16px; margin: 12px 0; font-weight: 500;">
+                            此條碼不在布可星球選書清單中
+                        </div>
+                        <div style="background: rgba(0, 0, 0, 0.3); padding: 12px; border-radius: 12px; margin-top: 16px;">
+                            <div style="font-size: 13px; margin-bottom: 4px; color: var(--text-muted);">
+                                <strong>掃描條碼：</strong>${match.original}
+                            </div>
+                            <div style="font-size: 13px; color: var(--text-muted);">
+                                <strong>處理結果：</strong>${match.matchedCode || '無法識別'}
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            function advancedBarcodeProcessor(rawCode) {
+                const cleaned = rawCode.replace(/\D/g, '');
+                const results = new Set();
+                if (!cleaned) return [];
+                results.add(cleaned);
+                if (cleaned.length === 18) results.add(cleaned.slice(0, 13));
+                if (cleaned.length === 15) results.add(cleaned.slice(0, 10));
+                if (cleaned.length > 13) results.add(cleaned.slice(0, 13));
+                if (cleaned.length > 10) results.add(cleaned.slice(0, 10));
+                if (cleaned.length > 8) results.add(cleaned.slice(0, cleaned.length - 1));
+                if (cleaned.length >= 10) {
+                    for (let i = 0; i <= cleaned.length - 10; i++) {
+                        const slice13 = cleaned.slice(i, i + 13);
+                        const slice10 = cleaned.slice(i, i + 10);
+                        if (slice13.length === 13) results.add(slice13);
+                        if (slice10.length === 10) results.add(slice10);
+                    }
+                }
+                return Array.from(results).filter(code => code.length >= 8);
+            }
+
+            function intelligentBookMatch(rawCode) {
+                const candidates = advancedBarcodeProcessor(rawCode);
+                for (const candidate of candidates) {
+                    const match = state.bookList.find(book => {
+                        if (!book.ISBN) return false;
+                        const normalized = book.ISBN.replace(/\D/g, '');
+                        if (normalized === candidate) return true;
+                        if (normalized.length === candidate.length && normalized.substring(0, normalized.length - 1) === candidate.substring(0, candidate.length - 1)) return true;
+                        if (normalized.includes(candidate) || candidate.includes(normalized)) {
+                            return Math.abs(normalized.length - candidate.length) <= 2;
+                        }
+                        return false;
+                    });
+                    if (match) {
+                        return { found: match, matchedCode: candidate, original: rawCode };
+                    }
+                }
+                return { found: null, matchedCode: candidates[0] || '', original: rawCode };
+            }
+
+            async function detectWithBarcodeDetector(canvas) {
+                const detector = state.detectors.barcodeDetector;
+                if (!detector || !state.detection.useBarcodeDetector) return null;
+                try {
+                    const detections = await detector.detect(canvas);
+                    if (!detections || detections.length === 0) return null;
+                    const best = detections.find(det => det.rawValue && det.rawValue.replace(/\D/g, '').length >= 8) || detections[0];
+                    if (!best || !best.rawValue) return null;
+                    return {
+                        text: best.rawValue,
+                        engine: 'BarcodeDetector',
+                        format: best.format || 'Unknown'
+                    };
+                } catch (error) {
+                    log(`BarcodeDetector 失敗：${error.message}`);
+                    return null;
+                }
+            }
+
+            function detectWithZxing(canvas) {
+                const reader = state.detectors.multiFormatReader;
+                if (!reader || !state.detection.useZxing || !checkZXingAvailability()) return null;
+
+                try {
+                    const luminanceSource = new ZXingBrowser.HTMLCanvasElementLuminanceSource(canvas);
+                    const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
+                    const result = reader.decodeWithState(binaryBitmap);
+
+                    if (reader.reset) {
+                        reader.reset();
+                    }
+
+                    if (!result) return null;
+
+                    return {
+                        text: result.getText(),
+                        engine: 'ZXing',
+                        format: result.getBarcodeFormat ? result.getBarcodeFormat().toString() : 'Unknown'
+                    };
+                } catch (error) {
+                    try {
+                        if (reader.reset) {
+                            reader.reset();
+                        }
+                    } catch (resetError) {
+                        log(`ZXing reset 失敗：${resetError.message}`);
+                    }
+
+                    if (!(error instanceof ZXing.NotFoundException)) {
+                        log(`ZXing 失敗：${error.message}`);
+                    }
+                    return null;
+                }
+            }
+
+            async function detectFromCanvas(canvas, stageLabel) {
+                let detection = await detectWithBarcodeDetector(canvas);
+                if (detection) {
+                    detection.stage = stageLabel;
+                    return detection;
+                }
+                detection = detectWithZxing(canvas);
+                if (detection) {
+                    detection.stage = stageLabel;
+                    return detection;
+                }
+                return null;
+            }
+
+            async function tryDetections() {
+                const baseDetection = await detectFromCanvas(processingCanvas, '基礎影像');
+                if (baseDetection) return baseDetection;
+
+                if (state.detection.allowRotation) {
+                    for (const angle of state.detection.rotationAngles) {
+                        scratchCanvas.width = processingCanvas.width;
+                        scratchCanvas.height = processingCanvas.height;
+                        scratchCtx.save();
+                        scratchCtx.clearRect(0, 0, scratchCanvas.width, scratchCanvas.height);
+                        scratchCtx.translate(scratchCanvas.width / 2, scratchCanvas.height / 2);
+                        scratchCtx.rotate(angle * Math.PI / 180);
+                        scratchCtx.drawImage(processingCanvas, -processingCanvas.width / 2, -processingCanvas.height / 2);
+                        scratchCtx.restore();
+                        const rotatedDetection = await detectFromCanvas(scratchCanvas, `旋轉 ${angle}°`);
+                        if (rotatedDetection) return rotatedDetection;
+                    }
+                }
+
+                if (state.detection.allowSlices) {
+                    for (const slice of state.detection.slices) {
+                        const sliceHeight = Math.round(processingCanvas.height * slice.heightRatio);
+                        const sliceTop = Math.round(processingCanvas.height * slice.topRatio);
+                        scratchCanvas.width = processingCanvas.width;
+                        scratchCanvas.height = sliceHeight;
+                        scratchCtx.clearRect(0, 0, scratchCanvas.width, scratchCanvas.height);
+                        scratchCtx.drawImage(
+                            processingCanvas,
+                            0,
+                            sliceTop,
+                            processingCanvas.width,
+                            sliceHeight,
+                            0,
+                            0,
+                            scratchCanvas.width,
+                            sliceHeight
+                        );
+                        const sliceDetection = await detectFromCanvas(scratchCanvas, `掃描線-${slice.label}`);
+                        if (sliceDetection) return sliceDetection;
+                    }
+                }
+
+                return null;
+            }
+
+            function updateEngineBadge(text, success = false) {
+                elements.engineBadge.textContent = text;
+                elements.engineBadge.style.background = success ? 'rgba(0, 230, 118, 0.8)' : 'rgba(0, 0, 0, 0.6)';
+                elements.engineBadge.style.borderColor = success ? 'rgba(0, 230, 118, 0.9)' : 'rgba(255, 255, 255, 0.2)';
+                elements.engineBadge.style.color = success ? '#00281f' : '#e0f2f1';
+            }
+
+            function showSuccessPopover() {
+                const resultCard = elements.resultCard;
+                const popover = elements.successPopover;
+
+                if (!resultCard || !popover) {
+                    log('⚠️ Popover 或 ResultCard 元素未找到');
+                    return;
+                }
+
+                // 重置所有樣式和類別
+                popover.classList.remove('show', 'fade-out');
+                popover.style.position = 'fixed';
+                popover.style.zIndex = '9999';
+
+                const rect = resultCard.getBoundingClientRect();
+
+                // 計算popover位置（相對於視窗，在 resultCard 上緣）
+                const popoverLeft = rect.left + (rect.width / 2);
+                const popoverTop = rect.top - 60; // 在 resultCard 上方 60px
+
+                popover.style.left = `${popoverLeft}px`;
+                popover.style.top = `${popoverTop}px`;
+                popover.style.transform = 'translateX(-50%)';
+
+                log('🎉 顯示成功 Popover (在 ResultCard 上方)');
+
+                // 強制瀏覽器重繪
+                popover.offsetHeight;
+
+                // 顯示動畫
+                requestAnimationFrame(() => {
+                    popover.classList.add('show');
+                });
+
+                // 3秒後淡出
+                setTimeout(() => {
+                    popover.classList.add('fade-out');
+                    setTimeout(() => {
+                        popover.classList.remove('show', 'fade-out');
+                        popover.style.position = 'absolute'; // 恢復原始定位
+                    }, 300);
+                }, 3000);
+            } async function processFrame() {
+                const video = elements.preview;
+                if (!video.videoWidth || !video.videoHeight) return null;
+
+                const now = performance.now();
+                if (now - state.lastDetectionAt < state.detection.intervalMs) return null;
+                state.lastDetectionAt = now;
+
+                const roi = computeRoi(video.videoWidth, video.videoHeight);
+                const targetWidth = Math.min(1280, Math.round(roi.sw));
+                const targetHeight = Math.round(targetWidth * (roi.sh / roi.sw));
+                processingCanvas.width = targetWidth;
+                processingCanvas.height = targetHeight;
+                processingCtx.drawImage(video, roi.sx, roi.sy, roi.sw, roi.sh, 0, 0, targetWidth, targetHeight);
+
+                const imageData = processingCtx.getImageData(0, 0, targetWidth, targetHeight);
+                applyImageProcessing(imageData, targetWidth, targetHeight);
+                processingCtx.putImageData(imageData, 0, 0);
+
+                const detection = await tryDetections();
+                state.stats.frames++;
+                updateStatsDisplay();
+                return detection;
+            }
+
+            async function scanLoop() {
+                while (state.running) {
+                    await new Promise(resolve => requestAnimationFrame(resolve));
+                    if (!state.running) break;
+                    if (state.detectionBusy) continue;
+                    state.detectionBusy = true;
+                    try {
+                        const detection = await processFrame();
+                        if (detection) {
+                            handleDetection(detection);
+                        }
+                    } catch (error) {
+                        log(`掃描迴圈錯誤：${error.message}`);
+                    } finally {
+                        state.detectionBusy = false;
+                    }
+                }
+            }
+
+            function handleDetection(detection) {
+                const cleaned = detection.text.replace(/\s+/g, '');
+                if (cleaned.replace(/\D/g, '').length < 8) {
+                    log(`略過短碼：${cleaned}`);
+                    return;
+                }
+
+                if (wasRecentlySeen(cleaned)) {
+                    return;
+                }
+                pushRecentCode(cleaned);
+
+                state.stats.valid++;
+                updateStatsDisplay();
+
+                log(`✅ ${detection.engine}(${detection.stage}) → ${cleaned}`);
+                elements.engineStatus.textContent = `${detection.engine} @ ${detection.stage}`;
+                updateEngineBadge(`${detection.engine} 命中`, true);
+
+                const match = intelligentBookMatch(cleaned);
+                if (match.found) {
+                    state.stats.success++;
+                }
+                updateStatsDisplay();
+                updateResultCardForMatch(match);
+
+                if (!match.found) {
+                    setTimeout(() => {
+                        updateEngineBadge('持續掃描中…');
+                    }, 2000);
+                    return;
+                }
+
+                log('🎯 找到匹配書籍，準備顯示 popover');
+
+                // 顯示成功popover
+                showSuccessPopover();
+                stopScanner(false);
+            }
+
+            async function startScanner() {
+                if (state.running) return;
+
+                try {
+                    resetStats();
+                    updateEngineBadge('啟動攝影機…');
+                    elements.engineStatus.textContent = '啟動中';
+                    log('正在初始化攝影機…');
+
+                    // 嘗試使用簡化的攝影機設定
+                    try {
+                        state.stream = await navigator.mediaDevices.getUserMedia({
+                            video: {
+                                facingMode: 'environment',
+                                width: { ideal: 1920, min: 640 },
+                                height: { ideal: 1080, min: 480 }
+                            },
+                            audio: false
+                        });
+                    } catch (error) {
+                        // 如果失敗，嘗試更基本的設定
+                        log('嘗試基本攝影機設定...');
+                        state.stream = await navigator.mediaDevices.getUserMedia({
+                            video: { facingMode: 'environment' },
+                            audio: false
+                        });
+                    }
+
+                    state.track = state.stream.getVideoTracks()[0];
+                    elements.preview.srcObject = state.stream;
+                    await elements.preview.play();
+
+                    updateCameraStatusText();
+                    updateRoiOverlay();
+
+                    elements.startBtn.style.display = 'none';
+                    elements.stopBtn.style.display = 'inline-flex';
+                    elements.stopBtn.disabled = false;
+
+                    const capabilities = state.track.getCapabilities ? state.track.getCapabilities() : {};
+                    if (capabilities && capabilities.torch) {
+                        elements.flashBtnHeader.disabled = false;
+                        elements.flashBtnHeader.classList.remove('flash-on');
+                        elements.flashIconHeader.textContent = '�手電筒';
+                    } else {
+                        elements.flashBtnHeader.disabled = true;
+                        elements.flashBtnHeader.classList.remove('flash-on');
+                        elements.flashIconHeader.textContent = '�手電筒';
+                    }
+
+                    state.flashOn = false;
+                    state.running = true;
+                    elements.resultCard.classList.remove('error', 'success');
+                    elements.resultCard.textContent = '掃描中，請將條碼置於畫面中央並保持穩定。';
+                    elements.engineStatus.textContent = '掃描中';
+                    scanLoop();
+                    log('📽️ 掃描迴圈啟動');
+                    updateEngineBadge('掃描中…');
+                } catch (error) {
+                    log(`❌ 無法啟動攝影機：${error.message}`);
+                    updateEngineBadge('啟動失敗');
+                    elements.resultCard.classList.add('error');
+
+                    let errorMessage = '攝影機啟動失敗';
+                    if (error.name === 'NotAllowedError') {
+                        errorMessage = '❌ 攝影機權限被拒絕，請允許此網站使用攝影機。';
+                    } else if (error.name === 'NotFoundError') {
+                        errorMessage = '❌ 找不到攝影機設備，請確認攝影機已連接。';
+                    } else if (error.name === 'NotReadableError') {
+                        errorMessage = '❌ 攝影機正被其他應用程式使用中。';
+                    } else {
+                        errorMessage = `❌ 攝影機啟動失敗：${error.message}`;
+                    }
+
+                    elements.resultCard.textContent = errorMessage;
+                    stopScanner(true);
+                }
+            }
+
+            function stopScanner(resetStatsToo = true) {
+                state.running = false;
+                state.detectionBusy = false;
+                if (state.track) {
+                    try { state.track.stop(); } catch (error) { log(`停止 track 失敗：${error.message}`); }
+                    state.track = null;
+                }
+                if (state.stream) {
+                    state.stream.getTracks().forEach(track => track.stop());
+                    state.stream = null;
+                }
+                elements.preview.srcObject = null;
+                updateEngineBadge('已停止');
+                elements.engineStatus.textContent = '已停止';
+                elements.startBtn.style.display = 'inline-flex';
+                elements.stopBtn.style.display = 'none';
+                elements.flashBtnHeader.disabled = true;
+                elements.flashBtnHeader.classList.remove('flash-on');
+                elements.flashIconHeader.textContent = '�手電筒';
+                state.flashOn = false;
+                updateCameraStatusText();
+                if (resetStatsToo) {
+                    resetStats();
+                }
+            }
+
+            async function toggleFlash() {
+                if (!state.track) return;
+                const capabilities = state.track.getCapabilities ? state.track.getCapabilities() : {};
+                if (!capabilities || !capabilities.torch) {
+                    elements.flashIconHeader.textContent = '不支援手電筒';
+                    elements.flashBtnHeader.disabled = true;
+                    return;
+                }
+                state.flashOn = !state.flashOn;
+                try {
+                    await state.track.applyConstraints({ advanced: [{ torch: state.flashOn }] });
+                    elements.flashIconHeader.textContent = state.flashOn ? '�關閉手電筒' : '�手電筒';
+                    elements.flashBtnHeader.classList.toggle('flash-on', state.flashOn);
+                } catch (error) {
+                    log(`手電筒切換失敗：${error.message}`);
+                }
+            }
+
+            function updateCameraStatusText() {
+                if (!state.track) {
+                    elements.cameraStatus.textContent = '尚未啟動';
+                    return;
+                }
+                const settings = state.track.getSettings();
+                elements.cameraStatus.textContent = `${settings.width || '?'}×${settings.height || '?'} @ ${Math.round(settings.frameRate || 0)}fps`;
+            }
+
+            function bindEvents() {
+                elements.startBtn.addEventListener('click', startScanner);
+                elements.stopBtn.addEventListener('click', () => stopScanner(false));
+                elements.flashBtnHeader.addEventListener('click', toggleFlash);
+
+                // 測試按鈕事件
+                const testPopoverBtn = document.getElementById('testPopoverBtn');
+                if (testPopoverBtn) {
+                    testPopoverBtn.addEventListener('click', () => {
+                        log('🧪 手動觸發 popover 測試');
+                        showSuccessPopover();
+                    });
+                }
+
+                window.addEventListener('resize', updateRoiOverlay);
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) {
+                        stopScanner(false);
+                    }
+                });
+            }
+
+            // 等待 DOM 完全載入
+            document.addEventListener('DOMContentLoaded', () => {
+                initDetectors();
+                bindEvents();
+                loadBookList();
+
+                // 檢查基本功能
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    elements.resultCard.classList.add('error');
+                    elements.resultCard.textContent = '❌ 此瀏覽器不支援攝影機功能，請使用較新的瀏覽器。';
+                    elements.startBtn.disabled = true;
+                }
+            });
+        })();
+    </script>
+</body>
+
+</html>
