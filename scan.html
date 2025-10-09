@@ -24,7 +24,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script src="https://unpkg.com/@zxing/browser@latest"></script>
-    <link rel="stylesheet" href="scan.css">
+    <script src="https://code.iconify.design/3/3.1.1/iconify.min.js"></script>
+    <link rel="stylesheet" href="scan.css?123">
 </head>
 
 <body>
@@ -460,6 +461,20 @@
              * 根據匹配結果更新結果卡片顯示
              * @param {Object} match - 匹配結果物件 {found, original, matchedCode}
              */
+            function showLoadingCard() {
+                elements.resultCard.classList.remove('error', 'success');
+                elements.resultCard.innerHTML = `
+                    <div class="loading-card">
+                        <div class="loading-spinner">
+                            <div class="spinner"></div>
+                        </div>
+                        <div class="loading-text">
+                            正在查詢書籍資訊...
+                        </div>
+                    </div>
+                `;
+            }
+
             function updateResultCardForMatch(match) {
                 if (match.found) {
                     // 顯示成功匹配結果
@@ -877,20 +892,27 @@
                     state.stats.success++;
                 }
                 updateStatsDisplay();
-                updateResultCardForMatch(match);
 
-                if (!match.found) {
-                    setTimeout(() => {
-                        updateEngineBadge('持續掃描中…');
-                    }, 2000);
-                    return;
-                }
+                // 先顯示 Loading 畫面
+                showLoadingCard();
 
-                log('🎯 找到匹配書籍，準備顯示 popover');
+                // 0.7秒後顯示實際結果
+                setTimeout(() => {
+                    updateResultCardForMatch(match);
 
-                // 顯示成功popover
-                showSuccessPopover();
-                stopScanner(false);
+                    if (!match.found) {
+                        setTimeout(() => {
+                            updateEngineBadge('持續掃描中…');
+                        }, 2000);
+                        return;
+                    }
+
+                    log('🎯 找到匹配書籍，準備顯示 popover');
+
+                    // 顯示成功popover
+                    showSuccessPopover();
+                    stopScanner(false);
+                }, 700);
             }
 
             async function startScanner() {
@@ -1052,11 +1074,17 @@
                         state.stats.success++;
                         updateStatsDisplay();
 
-                        // 顯示成功結果（包含動畫）
-                        updateResultCardForMatch(mockMatch);
+                        // 先顯示 Loading 畫面
+                        showLoadingCard();
 
-                        // 顯示成功彈窗
-                        showSuccessPopover();
+                        // 0.7秒後顯示實際結果
+                        setTimeout(() => {
+                            // 顯示成功結果（包含動畫）
+                            updateResultCardForMatch(mockMatch);
+
+                            // 顯示成功彈窗
+                            showSuccessPopover();
+                        }, 700);
 
                         // 更新引擎狀態
                         elements.engineStatus.textContent = '測試引擎 @ 模擬掃描';
@@ -1080,6 +1108,597 @@
                 window.addEventListener('scroll', hidePopover);
                 // 觸控滑動時也隱藏 popover
                 window.addEventListener('touchmove', hidePopover);
+
+                // 留言版事件
+                initFeedbackSystem();
+            }
+
+            // === 留言版功能 ===
+            function initFeedbackSystem() {
+                const feedbackBtn = document.getElementById('feedbackBtn');
+                const feedbackSection = document.getElementById('feedbackSection');
+                const closeFeedback = document.getElementById('closeFeedback');
+                const msgForm = document.getElementById('msgForm');
+                const messagesDiv = document.getElementById('messages');
+
+                // 切換留言版顯示/隱藏
+                function toggleFeedback() {
+                    if (feedbackSection.style.display === 'none') {
+                        feedbackSection.style.display = 'block';
+                        loadMessages();
+                        initializeNickname();
+                        // 滾動到頁面底部，顯示留言版
+                        setTimeout(() => {
+                            window.scrollTo({
+                                top: document.body.scrollHeight,
+                                behavior: 'smooth'
+                            });
+                        }, 100);
+                    } else {
+                        feedbackSection.style.display = 'none';
+                    }
+                }
+
+                // 載入留言（從外部檔案或本地儲存）
+                async function loadMessages() {
+                    // 顯示載入中
+                    messagesDiv.innerHTML = `
+                        <div class="loading-messages">
+                            <p>📡 正在載入留言...</p>
+                        </div>
+                    `;
+
+                    try {
+                        let messages = [];
+
+                        // 嘗試從外部檔案載入留言
+                        try {
+                            const response = await fetch('./data/messages.json');
+                            if (response.ok) {
+                                messages = await response.json();
+                                log('✅ 從外部檔案載入留言成功');
+                            } else {
+                                throw new Error('外部檔案不存在');
+                            }
+                        } catch (fileError) {
+                            // 如果外部檔案失敗，使用本地儲存
+                            log('ℹ️ 外部檔案載入失敗，使用本地儲存');
+                            const storedMessages = localStorage.getItem('bookPlanetMessages');
+                            messages = storedMessages ? JSON.parse(storedMessages) : [];
+                        }
+
+                        // 如果有載入外部檔案，也合併本地的新留言
+                        if (messages.length > 0) {
+                            const localMessages = localStorage.getItem('bookPlanetMessages');
+                            if (localMessages) {
+                                const localParsed = JSON.parse(localMessages);
+                                // 找出本地但不在外部檔案中的留言（新留言）
+                                const newLocalMessages = localParsed.filter(local =>
+                                    !messages.some(external => external.id === local.id)
+                                );
+                                // 將新留言放在最前面
+                                messages = [...newLocalMessages, ...messages];
+                            }
+                        }
+
+                        // 載入並合併回覆
+                        const storedReplies = localStorage.getItem('bookPlanetReplies');
+                        if (storedReplies) {
+                            const replies = JSON.parse(storedReplies);
+                            // 將回覆加到對應的留言中
+                            messages = messages.map(msg => {
+                                const messageReplies = replies.filter(reply => {
+                                    // 比較時都轉成字串，因為parentId可能是數字或字串
+                                    return String(reply.parentId) === String(msg.id || msg.time);
+                                });
+                                if (messageReplies.length > 0) {
+                                    return { ...msg, replies: messageReplies };
+                                }
+                                return msg;
+                            });
+                        }
+
+                        if (messages.length === 0) {
+                            messagesDiv.innerHTML = `
+                                <div class="empty-messages">
+                                    <p>💬 還沒有留言，成為第一個留言的人吧！</p>
+                                </div>
+                            `;
+                        } else {
+                            messagesDiv.innerHTML = messages.map(msg => renderMessage(msg)).join('');
+                            // 綁定回覆按鈕事件
+                            bindReplyEvents();
+                        }
+
+                        log('✅ 留言載入成功');
+
+                    } catch (error) {
+                        log(`❌ 載入留言失敗：${error.message}`);
+
+                        messagesDiv.innerHTML = `
+                            <div class="message error-message" style="text-align: center; color: var(--error-light); background: rgba(220, 38, 38, 0.1); border-color: var(--error);">
+                                <div class="message-content">
+                                    <p style="margin-bottom: 8px;">⚠️ 載入留言時發生錯誤</p>
+                                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">請稍後再試</p>
+                                    <button class="reload-btn" onclick="loadMessages()">
+                                        🔄 重新載入
+                                    </button>
+                                    <button class="clear-btn" title="清除所有留言" onclick="window.clearAllMessages()">
+                                        🗑️
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+
+                // 暴露重新載入函數到全域
+                window.reloadMessages = loadMessages;
+
+                // 渲染單一留言（包含回覆）
+                function renderMessage(msg, isReply = false) {
+                    const replyHtml = msg.replies ? msg.replies.map(reply =>
+                        `<div class="reply-message">${renderMessage(reply, true)}</div>`
+                    ).join('') : '';
+
+                    const replyButton = !isReply ? `
+                        <div class="message-actions">
+                            <button class="reply-btn" onclick="toggleReplyForm('${msg.id || msg.time}')">
+                                💬 回覆
+                            </button>
+                        </div>
+                        <div class="reply-form" id="replyForm_${msg.id || msg.time}">
+                            <div class="reply-input-group">
+                                <input type="text" placeholder="你的暱稱" id="replyName_${msg.id || msg.time}" value="${(() => {
+                            const profile = localStorage.getItem('bookPlanetUserProfile');
+                            return profile ? JSON.parse(profile).nickname : localStorage.getItem('bookPlanetUserNickname') || '';
+                        })()}" required />
+                            </div>
+                            <div class="reply-input-group">
+                                <textarea placeholder="回覆內容..." id="replyContent_${msg.id || msg.time}" required></textarea>
+                            </div>
+                            <div class="reply-actions">
+                                <button class="reply-submit-btn" onclick="submitReply('${msg.id || msg.time}')">送出回覆</button>
+                                <button class="reply-cancel-btn" onclick="toggleReplyForm('${msg.id || msg.time}')">取消</button>
+                            </div>
+                        </div>
+                    ` : '';
+
+                    // 直接生成頭像，確保一定有結果
+                    const avatarData = generateAvatar(msg.name || 'Anonymous');
+                    const avatarHTML = createAvatarHTML(avatarData);
+
+                    return `
+                        <div class="message" data-id="${msg.id || msg.time}">
+                            <div class="message-header">
+                                <div class="user-info">
+                                    ${avatarHTML}
+                                    <span class="message-name">${escapeHtml(msg.name)}</span>
+                                </div>
+                                <span class="message-time">${formatTime(msg.time)}</span>
+                            </div>
+                            <p class="message-content">${escapeHtml(msg.content)}</p>
+                            ${replyButton}
+                            ${replyHtml}
+                        </div>
+                    `;
+                }
+
+                // 切換回覆表單顯示
+                function toggleReplyForm(messageId) {
+                    const form = document.getElementById(`replyForm_${messageId}`);
+                    if (form) {
+                        form.classList.toggle('show');
+                        if (form.classList.contains('show')) {
+                            // 聚焦到名稱輸入框
+                            const nameInput = document.getElementById(`replyName_${messageId}`);
+                            if (nameInput) nameInput.focus();
+                        }
+                    }
+                }
+
+                // 送出回覆
+                function submitReply(messageId) {
+                    const nameInput = document.getElementById(`replyName_${messageId}`);
+                    const contentInput = document.getElementById(`replyContent_${messageId}`);
+
+                    if (!nameInput || !contentInput) return;
+
+                    const name = nameInput.value.trim();
+                    const content = contentInput.value.trim();
+
+                    if (!name || !content) {
+                        alert('請填寫暱稱和回覆內容');
+                        return;
+                    }
+
+                    // 建立回覆物件
+                    const reply = {
+                        id: Date.now(),
+                        name: name,
+                        content: content,
+                        time: new Date().toISOString(),
+                        parentId: messageId
+                    };
+
+                    // 更新用戶暱稱（如果用戶手動修改了）
+                    const currentStoredNickname = localStorage.getItem('bookPlanetUserNickname');
+                    if (name !== currentStoredNickname) {
+                        localStorage.setItem('bookPlanetUserNickname', name);
+                    }
+
+                    // 儲存回覆到本地儲存
+                    let storedReplies = localStorage.getItem('bookPlanetReplies');
+                    const replies = storedReplies ? JSON.parse(storedReplies) : [];
+                    replies.push(reply);
+                    localStorage.setItem('bookPlanetReplies', JSON.stringify(replies));
+
+                    // 清空表單並隱藏
+                    nameInput.value = '';
+                    contentInput.value = '';
+                    toggleReplyForm(messageId);
+
+                    // 重新載入留言
+                    loadMessages();
+
+                    log('✅ 回覆已送出');
+                }
+
+                // 綁定回覆事件（由於使用innerHTML，需要重新綁定）
+                function bindReplyEvents() {
+                    // 這個函數暫時不需要做什麼，因為我們使用 onclick
+                }
+
+                // 將toggleReplyForm和submitReply暴露到全域
+                window.toggleReplyForm = toggleReplyForm;
+                window.submitReply = submitReply;
+
+                // 初始化示範留言（僅在第一次訪問時）
+                function initSampleMessages() {
+                    const existingMessages = localStorage.getItem('bookPlanetMessages');
+                    if (!existingMessages) {
+                        const sampleMessages = [
+                            {
+                                name: "布可星球管理員",
+                                content: "歡迎使用布可星球選書系統！掃描書籍條碼即可查詢書籍資訊。",
+                                time: new Date().toISOString()
+                            },
+                            {
+                                name: "讀者小明",
+                                content: "這個系統真的很方便！掃描後立刻就能看到書籍詳細資料。",
+                                time: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() // 昨天
+                            }
+                        ];
+                        localStorage.setItem('bookPlanetMessages', JSON.stringify(sampleMessages));
+                    }
+                }
+
+                // 執行初始化
+                initSampleMessages();
+
+                // 清除所有留言的功能（僅供測試使用）
+                window.clearAllMessages = function () {
+                    if (confirm('確定要清除所有留言嗎？此動作無法復原。')) {
+                        localStorage.removeItem('bookPlanetMessages');
+                        localStorage.removeItem('bookPlanetReplies');
+                        loadMessages();
+                        alert('所有留言已清除');
+                    }
+                };
+
+                // 關閉留言區
+                window.closeFeedback = function () {
+                    const feedbackSection = document.getElementById('feedbackSection');
+                    if (feedbackSection) {
+                        feedbackSection.style.display = 'none';
+                    }
+                };
+
+                // 名字分配系統
+                const nickNames = [
+                    '吉伊卡蛙', '哆啦J夢', '孫陸空', '炭治狼', '肝鐵人', '籠貓', '鎖龍',
+                    '奇芽', '謎豆子', '阿妮亞', '滷夫', '撕紙王', '辣布布', '史努嗶',
+                    '卡皮爸拉', '史笛奇', '鼻卡丘'
+                ];
+
+                // 頭像系統 (使用顏色+字母) - 深色版本
+                const avatarColors = [
+                    '#E53E3E', '#319795', '#3182CE', '#DD6B20', '#38A169',
+                    '#D69E2E', '#9F7AEA', '#3182CE', '#ED8936', '#48BB78',
+                    '#E53E3E', '#3182CE', '#D69E2E', '#4299E1', '#38A169',
+                    '#E53E3E', '#9F7AEA', '#319795', '#D69E2E', '#4299E1'
+                ];
+
+                function generateAvatar(name) {
+                    if (!name || name.length === 0) {
+                        return { char: '?', color: '#6B7280' };
+                    }
+                    const firstChar = name.charAt(0).toUpperCase();
+                    const colorIndex = (name.charCodeAt(0) + name.length) % avatarColors.length;
+                    const color = avatarColors[colorIndex];
+                    return { char: firstChar, color: color };
+                }
+
+                // 簡單的頭像HTML生成函數
+                function createAvatarHTML(avatarData) {
+                    if (!avatarData || !avatarData.char || !avatarData.color) {
+                        return '<div class="user-avatar" style="background-color: #6B7280;">?</div>';
+                    }
+                    return `<div class="user-avatar" style="background-color: ${avatarData.color}">${avatarData.char}</div>`;
+                } function generateUserProfile() {
+                    // 檢查是否已經有分配過的使用者資料
+                    let userProfile = localStorage.getItem('bookPlanetUserProfile');
+
+                    if (userProfile) {
+                        return JSON.parse(userProfile);
+                    }
+
+                    // 獲取已使用的暱稱組合
+                    const usedNicknames = JSON.parse(localStorage.getItem('bookPlanetUsedNicknames') || '[]');
+
+                    // 生成可用的數字（10-99，排除包含4的數字）
+                    const availableNumbers = [];
+                    for (let i = 10; i <= 99; i++) {
+                        if (!i.toString().includes('4')) {
+                            availableNumbers.push(i);
+                        }
+                    }
+
+                    // 嘗試找到可用的暱稱組合
+                    let attempts = 0;
+                    let nickname;
+
+                    while (attempts < 1000) {  // 防止無限循環
+                        const randomName = nickNames[Math.floor(Math.random() * nickNames.length)];
+                        const randomNumber = availableNumbers[Math.floor(Math.random() * availableNumbers.length)];
+                        nickname = randomName + randomNumber;
+
+                        if (!usedNicknames.includes(nickname)) {
+                            break;
+                        }
+                        attempts++;
+                    }
+
+                    // 如果所有組合都用完了，就用時間戳
+                    if (attempts >= 1000) {
+                        nickname = '訪客' + Date.now().toString().slice(-4);
+                    }
+
+                    // 根據暱稱生成頭像
+                    const avatarData = generateAvatar(nickname);
+
+                    // 建立使用者資料
+                    const newUserProfile = {
+                        nickname: nickname,
+                        avatar: avatarData
+                    };
+
+                    // 保存使用者資料
+                    localStorage.setItem('bookPlanetUserProfile', JSON.stringify(newUserProfile));
+                    localStorage.setItem('bookPlanetUserNickname', nickname); // 向下相容
+                    usedNicknames.push(nickname);
+                    localStorage.setItem('bookPlanetUsedNicknames', JSON.stringify(usedNicknames));
+
+                    return newUserProfile;
+                }
+
+                function initializeNickname() {
+                    const nameInput = document.getElementById('name');
+                    if (nameInput) {
+                        const userProfile = generateUserProfile();
+                        nameInput.value = userProfile.nickname;
+                        nameInput.placeholder = userProfile.nickname;
+                    }
+                }
+
+                // 取得使用者頭像
+                function getUserAvatar(username) {
+                    // 首先檢查是否為當前使用者
+                    const userProfile = localStorage.getItem('bookPlanetUserProfile');
+                    if (userProfile) {
+                        const profile = JSON.parse(userProfile);
+                        if (profile.nickname === username) {
+                            return profile.avatar;
+                        }
+                    }
+
+                    // 檢查是否在使用者頭像映射中
+                    const avatarMappings = JSON.parse(localStorage.getItem('bookPlanetAvatarMappings') || '{}');
+                    if (avatarMappings[username]) {
+                        return avatarMappings[username];
+                    }
+
+                    // 為新使用者生成頭像
+                    const avatarData = generateAvatar(username);
+                    avatarMappings[username] = avatarData;
+                    localStorage.setItem('bookPlanetAvatarMappings', JSON.stringify(avatarMappings));
+
+                    return avatarData;
+                }
+
+                // 送出留言
+                function submitMessage(e) {
+                    e.preventDefault();
+
+                    const name = document.getElementById('name').value.trim();
+                    const content = document.getElementById('content').value.trim();
+
+                    if (!name || !content) {
+                        showAlert('請填寫暱稱和留言內容', 'warning');
+                        return;
+                    }
+
+                    if (name.length > 50) {
+                        showAlert('暱稱不能超過 50 個字符', 'warning');
+                        return;
+                    }
+
+                    if (content.length > 500) {
+                        showAlert('留言內容不能超過 500 個字符', 'warning');
+                        return;
+                    }
+
+                    // 顯示送出中狀態
+                    const submitBtn = document.querySelector('.submit-btn');
+                    const originalText = submitBtn.textContent;
+                    submitBtn.textContent = '📤 送出中...';
+                    submitBtn.disabled = true;
+
+                    try {
+                        // 新增留言
+                        const newMessage = {
+                            id: Date.now(), // 簡單的ID生成
+                            name: name,
+                            content: content,
+                            time: new Date().toISOString()
+                        };
+
+                        // 同時儲存到本地儲存（作為備援）
+                        const storedMessages = localStorage.getItem('bookPlanetMessages');
+                        const localMessages = storedMessages ? JSON.parse(storedMessages) : [];
+                        localMessages.unshift(newMessage);
+                        localStorage.setItem('bookPlanetMessages', JSON.stringify(localMessages));
+
+                        // 更新用戶暱稱（如果用戶手動修改了）
+                        const currentStoredNickname = localStorage.getItem('bookPlanetUserNickname');
+                        if (name !== currentStoredNickname) {
+                            localStorage.setItem('bookPlanetUserNickname', name);
+                        }
+
+                        // 重置表單並重新載入留言
+                        msgForm.reset();
+                        loadMessages();
+
+                        // 重新設定暱稱到輸入框
+                        setTimeout(() => {
+                            const nameInput = document.getElementById('name');
+                            if (nameInput) {
+                                nameInput.value = name;
+                            }
+                        }, 100);
+
+                        log('✅ 留言已儲存到本地，請手動更新 data/messages.json 檔案');
+
+                        // 顯示提示訊息
+                        showAlert('留言已送出！', 'success');
+                        showFeedbackSuccess();
+
+                    } catch (error) {
+                        log(`❌ 送出留言失敗：${error.message}`);
+                        showAlert('留言送出失敗，請稍後再試', 'error');
+
+                    } finally {
+                        // 恢復按鈕狀態
+                        submitBtn.textContent = originalText;
+                        submitBtn.disabled = false;
+                    }
+                }
+
+                // 顯示提示訊息
+                function showAlert(message, type = 'info') {
+                    // 移除舊的提示
+                    const existingAlert = document.querySelector('.feedback-alert');
+                    if (existingAlert) {
+                        existingAlert.remove();
+                    }
+
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'feedback-alert';
+                    alertDiv.style.cssText = `
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        z-index: 10001;
+                        padding: 12px 20px;
+                        border-radius: 8px;
+                        font-weight: 500;
+                        box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+                        animation: slideInRight 0.3s ease-out;
+                        max-width: 300px;
+                        word-wrap: break-word;
+                    `;
+
+                    // 根據類型設定樣式
+                    switch (type) {
+                        case 'error':
+                            alertDiv.style.background = 'var(--error)';
+                            alertDiv.style.color = 'white';
+                            break;
+                        case 'warning':
+                            alertDiv.style.background = 'var(--warning)';
+                            alertDiv.style.color = 'white';
+                            break;
+                        case 'success':
+                            alertDiv.style.background = 'var(--success)';
+                            alertDiv.style.color = 'white';
+                            break;
+                        default:
+                            alertDiv.style.background = 'var(--primary)';
+                            alertDiv.style.color = 'white';
+                    }
+
+                    alertDiv.textContent = message;
+                    document.body.appendChild(alertDiv);
+
+                    // 自動移除
+                    setTimeout(() => {
+                        if (alertDiv.parentNode) {
+                            alertDiv.style.animation = 'slideOutRight 0.3s ease-in';
+                            setTimeout(() => alertDiv.remove(), 300);
+                        }
+                    }, 4000);
+                }
+
+                // 顯示成功提示
+                function showFeedbackSuccess() {
+                    const submitBtn = document.querySelector('.submit-btn');
+                    const originalText = submitBtn.textContent;
+
+                    submitBtn.textContent = '✅ 留言成功！';
+                    submitBtn.style.background = 'var(--success)';
+
+                    setTimeout(() => {
+                        submitBtn.textContent = originalText;
+                        submitBtn.style.background = 'var(--primary)';
+                    }, 2000);
+                }
+
+                // HTML 轉義（防 XSS）
+                function escapeHtml(text) {
+                    const div = document.createElement('div');
+                    div.textContent = text;
+                    return div.innerHTML;
+                }
+
+                // 時間格式化
+                function formatTime(timeStr) {
+                    try {
+                        return new Date(timeStr).toLocaleString('zh-TW', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        });
+                    } catch {
+                        return '時間不明';
+                    }
+                }
+
+                // 綁定事件
+                if (feedbackBtn) {
+                    feedbackBtn.addEventListener('click', toggleFeedback);
+                }
+
+                if (closeFeedback) {
+                    closeFeedback.addEventListener('click', () => {
+                        feedbackSection.style.display = 'none';
+                    });
+                }
+
+                if (msgForm) {
+                    msgForm.addEventListener('submit', submitMessage);
+                }
             }
 
             // 等待 DOM 完全載入
@@ -1087,6 +1706,7 @@
                 initDetectors();
                 bindEvents();
                 loadBookList();
+                initializeNickname();
 
                 // 檢查基本功能
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -1122,8 +1742,8 @@
             <!-- 聯繫作者區塊 -->
             <div class="contact-section">
                 <div class="contact-links">
-                    <span class="contact-item">💡 留言回饋</span>
-                    <a href="mailto:colinjen88@gmail.com" class="contact-item">⭐ 寫信給作者</a>
+                    <button id="feedbackBtn" class="contact-item feedback-btn">💡 留言回饋</button>
+                    <a href="mailto:colinjen88@gmail.com?subject=布可掃描器" class="contact-item">⭐ 寫信給作者</a>
                 </div>
             </div>
 
@@ -1131,7 +1751,7 @@
             <div class="copyright-section">
                 <div class="app-info">
                     <span class="app-title">📘 查詢布可星球條碼小工具</span>
-                    <span class="app-version">v1.0</span>
+                    <span class="app-version">v1.1</span>
                 </div>
                 <div class="copyright-text">
                     <span>© 2025 教育用途 | Made with ❤️ in Taiwan</span>
@@ -1140,6 +1760,32 @@
             </div>
         </div>
     </footer>
+
+    <!-- 留言版區塊 (初始隱藏，放置在最後面) -->
+    <div class="feedback-section" id="feedbackSection" style="display: none;">
+        <div class="feedback-container">
+            <button class="feedback-close-btn" onclick="closeFeedback()" title="關閉留言區">✕ 關閉留言</button>
+            <h3>💬 留言回饋</h3>
+            <div class="feedback-form">
+                <form id="msgForm">
+                    <div class="input-group">
+                        <input type="text" id="name" placeholder="你的暱稱" required />
+                    </div>
+                    <div class="input-group">
+                        <textarea id="content" rows="4" placeholder="請留下你的建議或回饋..." required></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="submit-btn">📝 送出留言</button>
+                        <button type="button" id="closeFeedback" class="close-btn">✕ 關閉</button>
+                    </div>
+                </form>
+            </div>
+            <div class="messages-container">
+                <h4>📋 最新留言</h4>
+                <div id="messages" class="messages-list"></div>
+            </div>
+        </div>
+    </div>
 
     <script>
         // === 統計功能模組 ===
@@ -1166,9 +1812,31 @@
             }
 
             /**
-             * 獲取並顯示訪問次數（避免15分鐘內重複累計）
+             * 載入並顯示統計資料（從外部檔案或本地儲存）
              */
-            function updateVisitCount() {
+            async function loadStats() {
+                try {
+                    // 嘗試從外部檔案載入統計資料
+                    const response = await fetch('./data/stats.json');
+                    if (response.ok) {
+                        const stats = await response.json();
+                        document.getElementById('visitCount').textContent = stats.visitCount.toLocaleString();
+                        // 你可以在這裡載入其他統計資料
+                        log('✅ 從外部檔案載入統計資料成功');
+                        return;
+                    }
+                } catch (error) {
+                    log('ℹ️ 外部檔案載入失敗，使用本地統計');
+                }
+
+                // 如果外部檔案失敗，使用原來的本地儲存邏輯
+                updateVisitCountLocal();
+            }
+
+            /**
+             * 獲取並顯示訪問次數（避免15分鐘內重複累計）- 本地版本
+             */
+            function updateVisitCountLocal() {
                 const now = Date.now();
                 const lastVisitTime = localStorage.getItem(STORAGE_KEYS.lastVisit);
                 const visitCount = parseInt(localStorage.getItem(STORAGE_KEYS.visitCount) || 0);
@@ -1233,7 +1901,7 @@
 
             // 監聽掃描成功事件
             document.addEventListener('DOMContentLoaded', function () {
-                updateVisitCount();
+                loadStats();
                 updateBookCount();
 
                 // 監聽掃描成功（當結果卡片顯示成功時）

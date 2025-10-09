@@ -599,6 +599,37 @@ video#preview {
     transition: all 0.4s ease-out;
 }
 
+/* Loading 卡片樣式 */
+.loading-card {
+    text-align: center;
+    padding: 30px 20px;
+}
+
+.loading-spinner {
+    margin-bottom: 16px;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f4f6;
+    border-top: 4px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+    font-size: 16px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
 .hidden {
     display: none !important;
 }
@@ -762,9 +793,9 @@ video#preview {
 .contact-item {
     display: inline-flex;
     align-items: center;
-    font-size: 12px;
+    font-size: 14px;
     color: var(--text-muted);
-    padding: 4px 8px;
+    padding: 6px 12px;
     background: rgba(51, 65, 85, 0.3);
     border-radius: 6px;
     border: 1px solid rgba(148, 163, 184, 0.1);
@@ -870,6 +901,681 @@ display: flex;
     opacity: 0.7;
 }
 
+/* 留言回饋按鈕樣式 */
+.feedback-btn {
+    background: none !important;
+    border: none !important;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.feedback-btn:hover {
+    transform: scale(1.05);
+    background: rgba(59, 130, 246, 0.1) !important;
+}
+
+/* 留言版區塊樣式 (白底黑字，固定在頁面底部) */
+.feedback-section {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    background: #ffffff;
+    border-top: 2px solid #e5e7eb;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.15);
+    animation: slideUp 0.4s ease-out;
+    z-index: 1000;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+.feedback-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px;
+    position: relative;
+}
+
+.feedback-section h3 {
+    margin: 0 0 32px 0;
+    font-size: 32px;
+    font-weight: 700;
+    color: #1f2937;
+    text-align: center;
+    position: relative;
+    letter-spacing: -0.5px;
+}
+
+.feedback-section h3::after {
+    content: '';
+    position: absolute;
+    bottom: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary), var(--primary-light));
+    border-radius: 3px;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+.feedback-close-btn {
+    position: sticky;
+    top: 0;
+    right: 0;
+    float: right;
+    margin-right: 0;
+    margin-top: 0;
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 0 0 0 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    transition: all 0.3s ease;
+    z-index: 1001;
+    white-space: nowrap;
+}
+
+.feedback-close-btn:hover {
+    background: #dc2626;
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+}
+
+.feedback-close-btn:active {
+    transform: scale(0.95);
+}
+
+.feedback-section h4 {
+    margin: 40px 0 20px 0;
+    font-size: 22px;
+    font-weight: 600;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    letter-spacing: -0.2px;
+}
+
+.feedback-section h4::before {
+    content: '';
+    width: 4px;
+    height: 18px;
+    background: var(--primary);
+    border-radius: 2px;
+}
+
+/* 表單樣式 */
+.feedback-form {
+    margin-bottom: 40px;
+    background: #f9fafb;
+    padding: 36px 32px;
+    border-radius: 18px;
+    border: 2px solid #e5e7eb;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.input-group {
+    margin-bottom: 28px;
+}
+
+.input-group:last-of-type {
+    margin-bottom: 32px;
+}
+
+.feedback-section .input-group input,
+.feedback-section .input-group textarea {
+    width: 100%;
+    padding: 20px 24px;
+    border: 2px solid #d1d5db;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #1f2937;
+    font-size: 18px;
+    font-family: inherit;
+    transition: all 0.3s ease;
+    resize: vertical;
+    line-height: 1.6;
+    box-sizing: border-box;
+    min-height: 56px;
+}
+
+.feedback-section .input-group textarea {
+    min-height: 120px;
+    padding: 24px;
+    font-size: 17px;
+    line-height: 1.7;
+}
+
+.input-group input:focus,
+.input-group textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 
+        0 0 0 3px rgba(37, 99, 235, 0.12),
+        0 4px 16px rgba(37, 99, 235, 0.08);
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.95);
+}
+
+/* 留言版專用輸入框聚焦樣式 */
+.feedback-section .input-group input:focus,
+.feedback-section .input-group textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    transform: translateY(-1px);
+}
+
+.input-group input::placeholder,
+.input-group textarea::placeholder {
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+.form-actions {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 32px;
+}
+
+.submit-btn,
+.close-btn {
+    padding: 20px 40px;
+    border: none;
+    border-radius: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 18px;
+    min-height: 60px;
+    min-width: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    letter-spacing: 0.5px;
+}
+
+.submit-btn {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: white;
+    box-shadow: 
+        0 8px 24px rgba(37, 99, 235, 0.25),
+        0 4px 12px rgba(37, 99, 235, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.submit-btn:hover {
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+    transform: translateY(-3px);
+    box-shadow: 
+        0 12px 32px rgba(37, 99, 235, 0.35),
+        0 6px 20px rgba(37, 99, 235, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.submit-btn:disabled {
+    background: var(--text-muted);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.feedback-section .close-btn {
+    background: #f3f4f6;
+    color: #374151;
+    border: 2px solid #d1d5db;
+}
+
+.feedback-section .close-btn:hover {
+    background: #ef4444;
+    color: white;
+    border-color: #ef4444;
+    transform: translateY(-2px);
+}
+
+/* 留言列表樣式 */
+.feedback-section .messages-container {
+    border-radius: 16px;
+    margin-top: 8px;
+}
+
+
+
+.messages-list {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.feedback-section .message {
+    padding: 28px 32px;
+    background: #ffffff;
+    border-radius: 16px;
+    border: 2px solid #e5e7eb;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    margin-bottom: 4px;
+}
+
+.message::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 6px;
+    height: 100%;
+    background: linear-gradient(180deg, var(--primary), var(--primary-light));
+    border-radius: 0 3px 3px 0;
+}
+
+.message:hover {
+    border-color: rgba(37, 99, 235, 0.3);
+    box-shadow: 
+        0 8px 24px rgba(0, 0, 0, 0.08),
+        0 4px 12px rgba(37, 99, 235, 0.06);
+    transform: translateY(-3px);
+}
+
+.message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--bg-secondary);
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    color: white;
+    margin-right: 8px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.feedback-section .message-name {
+    font-weight: 600;
+    color: #3b82f6;
+    font-size: 18px;
+}
+
+.feedback-section .message-time {
+    color: #6b7280;
+    font-size: 15px;
+    opacity: 0.8;
+    font-weight: 500;
+}
+
+.feedback-section .message-content {
+    color: #374151;
+    line-height: 1.7;
+    font-size: 17px;
+    margin: 0;
+    word-wrap: break-word;
+    word-break: break-word;
+    font-weight: 400;
+}
+
+/* 回覆功能樣式 */
+.message-actions {
+    margin-top: 12px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.reply-btn {
+    background: none;
+    border: 1px solid #d1d5db;
+    color: #6b7280;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.reply-btn:hover {
+    background: #f3f4f6;
+    color: #374151;
+    border-color: #9ca3af;
+}
+
+.reply-form {
+    margin-top: 16px;
+    padding: 16px;
+    background: #f9fafb;
+    border-radius: 8px;
+    border: 2px solid #e5e7eb;
+    display: none;
+}
+
+.reply-form.show {
+    display: block;
+    animation: slideDown 0.3s ease-out;
+}
+
+.reply-input-group {
+    margin-bottom: 12px;
+}
+
+.reply-input-group input,
+.reply-input-group textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #374151;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.reply-input-group textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.reply-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.reply-submit-btn,
+.reply-cancel-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.reply-submit-btn {
+    background: #3b82f6;
+    color: white;
+}
+
+.reply-submit-btn:hover {
+    background: #2563eb;
+}
+
+.reply-cancel-btn {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.reply-cancel-btn:hover {
+    background: #e5e7eb;
+}
+
+/* 回覆留言樣式 */
+.reply-message {
+    margin-top: 20px;
+    margin-left: 48px;
+    position: relative;
+    animation: slideInReply 0.3s ease-out;
+}
+
+@keyframes slideInReply {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.reply-message::before,
+.reply-message::after {
+    content: '';
+    display: none;
+}
+
+.reply-message .message {
+    background: linear-gradient(135deg, 
+        rgba(248, 250, 252, 0.95) 0%, 
+        rgba(240, 244, 255, 0.95) 50%,
+        rgba(235, 245, 255, 0.95) 100%);
+    border: 1px solid rgba(219, 234, 254, 0.8);
+    border-left: 4px solid #3b82f6;
+    border-radius: 18px;
+    box-shadow: 
+        0 8px 25px rgba(59, 130, 246, 0.08),
+        0 4px 12px rgba(0, 0, 0, 0.03),
+        inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    transform: scale(0.97);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(8px);
+    position: relative;
+    overflow: hidden;
+}
+
+.reply-message .message::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(59, 130, 246, 0.3) 50%, 
+        transparent 100%);
+}
+
+.reply-message .message:hover {
+    transform: scale(0.98);
+    box-shadow: 
+        0 12px 35px rgba(59, 130, 246, 0.12),
+        0 6px 18px rgba(0, 0, 0, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+.reply-message .user-info::before {
+    content: '';
+}
+
+.reply-message .message-content {
+    color: #475569;
+    font-style: italic;
+    position: relative;
+}
+
+.reply-message .message-content::before {
+    content: '"';
+    color: #3b82f6;
+    font-size: 20px;
+    font-weight: bold;
+    position: absolute;
+    left: -12px;
+    top: -2px;
+    opacity: 0.4;
+}
+
+.reply-message .message-content::after {
+    content: '"';
+    color: #3b82f6;
+    font-size: 20px;
+    font-weight: bold;
+    position: absolute;
+    right: -8px;
+    bottom: -8px;
+    opacity: 0.4;
+}
+
+.reply-message .user-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+    font-weight: 700;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.reply-message .message-name {
+    font-size: 15px;
+    color: #374151;
+}
+
+.reply-message .message-time {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+/* 空留言狀態樣式 */
+.feedback-section .empty-messages {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6b7280;
+}
+
+.empty-messages p {
+    font-size: 16px;
+    margin: 0;
+    opacity: 0.8;
+}
+
+/* 載入中樣式 */
+.feedback-section .loading-messages {
+    text-align: center;
+    padding: 30px 20px;
+    color: #6b7280;
+}
+
+.loading-messages p {
+    font-size: 15px;
+    margin: 0;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}
+
+/* 錯誤訊息樣式 */
+.error-message {
+    border-color: var(--error) !important;
+    background: rgba(239, 68, 68, 0.05) !important;
+}
+
+.error-message .message-content {
+    color: var(--error) !important;
+}
+
+/* 操作按鈕樣式 */
+.reload-btn,
+.clear-btn {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    margin: 0 6px;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
+}
+
+.reload-btn:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+.clear-btn {
+    background: var(--error);
+    opacity: 0.5;
+    padding: 10px 16px;
+    font-size: 14px;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.2);
+}
+
+.clear-btn:hover {
+    opacity: 1;
+    background: #dc2626;
+    transform: translateY(-1px);
+}
+
+/* 動畫 */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
 /* 響應式設計 */
 @media (max-width: 768px) {
     .footer-content {
@@ -890,8 +1596,8 @@ display: flex;
     }
     
     .contact-item {
-        font-size: 11px;
-        padding: 3px 6px;
+        font-size: 14px;
+        padding: 4px 8px;
     }
     
     .app-info,
@@ -914,6 +1620,155 @@ display: flex;
     
     .stat-label {
         font-size: 10px;
+    }
+
+    /* 留言版手機版樣式 */
+    .feedback-section {
+        max-height: 85vh;
+    }
+    
+    .feedback-container {
+        padding: 24px 20px;
+    }
+
+    .feedback-close-btn {
+        top: -1px;
+        right: -1px;
+        padding: 6px 12px;
+        font-size: 12px;
+        border-radius: 0 0 0 6px;
+    }
+
+    .feedback-section h3 {
+        font-size: 26px;
+        margin-bottom: 24px;
+    }
+
+    .feedback-section h4 {
+        font-size: 20px;
+        margin: 28px 0 16px 0;
+    }
+
+    .user-avatar {
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+        font-weight: 700;
+        margin-right: 6px;
+    }
+
+    .feedback-section .message-name {
+        font-size: 16px;
+    }
+
+    .feedback-form {
+        padding: 24px 20px;
+        margin-bottom: 28px;
+    }
+
+    .input-group {
+        margin-bottom: 16px;
+    }
+
+    .input-group input,
+    .input-group textarea {
+        padding: 16px 20px;
+        font-size: 16px;
+    }
+
+    .input-group textarea {
+        min-height: 100px;
+        padding: 20px;
+    }
+
+    .form-actions {
+        flex-direction: row;
+        gap: 16px;
+        justify-content: space-between;
+    }
+
+    .submit-btn,
+    .close-btn {
+        flex: 1;
+        padding: 16px 24px;
+        font-size: 16px;
+        min-height: 52px;
+    }
+
+    .messages-container {
+        padding: 16px;
+    }
+
+    .message {
+        padding: 16px;
+    }
+
+    .message-header {
+        margin-bottom: 10px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .message-name {
+        font-size: 14px;
+    }
+
+    .message-time {
+        font-size: 12px;
+    }
+
+    .message-content {
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    .message-name {
+        font-size: 15px;
+    }
+
+    .message-time {
+        font-size: 13px;
+    }
+
+    .message-content {
+        font-size: 15px;
+    }
+
+    .messages-list {
+        gap: 16px;
+    }
+
+    .reply-message {
+        margin-left: 32px;
+        margin-top: 16px;
+    }
+
+    .reply-message::before,
+    .reply-message::after {
+        display: none;
+    }
+
+    .reply-message .user-avatar {
+        width: 26px;
+        height: 26px;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .reply-message .message-content::before,
+    .reply-message .message-content::after {
+        font-size: 16px;
+    }
+
+    .reply-message .message-content::before {
+        left: -8px;
+        top: -1px;
+    }
+
+    .reply-message .message-content::after {
+        right: -6px;
+        bottom: -6px;
     }
 }
 
@@ -941,7 +1796,80 @@ display: flex;
     }
     
     .contact-item {
-        font-size: 10px;
-        padding: 2px 4px;
+        font-size: 14px;
+        padding: 3px 6px;
+    }
+
+    /* 留言版小螢幕樣式 */
+    .feedback-section {
+        max-height: 90vh;
+    }
+    
+    .feedback-container {
+        padding: 20px 16px;
+    }
+
+    .feedback-section h3 {
+        font-size: 18px;
+        margin-bottom: 16px;
+    }
+
+    .feedback-form {
+        padding: 12px;
+        margin-bottom: 20px;
+    }
+
+    .feedback-section h4 {
+        font-size: 14px;
+        margin: 16px 0 10px 0;
+    }
+
+    .input-group {
+        margin-bottom: 14px;
+    }
+
+    .input-group input,
+    .input-group textarea {
+        padding: 12px 14px;
+        font-size: 14px;
+    }
+
+    .form-actions {
+        gap: 10px;
+    }
+
+    .submit-btn,
+    .close-btn {
+        padding: 12px 16px;
+        font-size: 14px;
+        min-height: 44px;
+    }
+
+    .messages-container {
+        padding: 12px;
+    }
+
+    .messages-list {
+        gap: 12px;
+    }
+
+    .message {
+        padding: 14px;
+    }
+
+    .message-name {
+        font-size: 13px;
+    }
+
+    .message-time {
+        font-size: 11px;
+    }
+
+    .message-time {
+        font-size: 12px;
+    }
+
+    .message-content {
+        font-size: 14px;
     }
 }
