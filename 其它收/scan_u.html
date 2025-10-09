@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <title>終極掃描器 - 專治難掃的書</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 5px;
+            background: #000;
+            color: white;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .btn {
+            padding: 25px 35px;
+            font-size: 22px;
+            background: #00e676;
+            color: black;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            margin: 8px;
+            width: 220px;
+            font-weight: bold;
+        }
+
+        #flashBtn {
+            background: #ff6d00;
+            animation: glow 1.5s infinite;
+        }
+
+        @keyframes glow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 5px #ff6d00;
+            }
+
+            50% {
+                box-shadow: 0 0 25px #ff6d00, 0 0 35px #ff6d00;
+            }
+        }
+
+        #reader {
+            width: 100%;
+            margin: 5px auto;
+            border: 3px solid #00e676;
+            border-radius: 15px;
+        }
+
+        #result {
+            margin: 10px auto;
+            padding: 25px;
+            background: #1a1a1a;
+            border: 2px solid #00e676;
+            border-radius: 20px;
+            font-size: 18px;
+            line-height: 1.8;
+            box-shadow: 0 0 20px rgba(0, 230, 118, 0.3);
+        }
+
+        .success {
+            background: linear-gradient(135deg, #00e676, #00c853) !important;
+            color: black !important;
+        }
+
+        .error {
+            background: linear-gradient(135deg, #ff1744, #d50000) !important;
+            color: white !important;
+        }
+
+        .mega-text {
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .status-bar {
+            background: #333;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            border: 1px solid #00e676;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1 style="color: #00e676; text-shadow: 0 0 10px #00e676;">🎯 終極掃描器</h1>
+        <div style="color: #ff6d00; font-size: 16px; margin-bottom: 15px;">
+            專門解決難掃的書籍 | 多重掃描引擎
+        </div>
+
+        <button class="btn" id="startBtn">🚀 啟動終極掃描</button>
+        <button class="btn" id="flashBtn" style="display:none">💡 超亮手電筒</button>
+        <button class="btn" id="stopBtn" style="display:none; background:#ff1744">⏹️ 停止掃描</button>
+        <button class="btn" id="restartBtn" style="display:none; background:#2196f3">🔄 重新掃描</button>
+
+        <div id="reader" style="display:none"></div>
+        <div id="result" class="mega-text">🎯 準備終極掃描模式</div>
+    </div>
+
+    <script>
+        let bookList = [];
+        let html5Qr = null;
+        let running = false;
+        let scanned = false;
+        let flashOn = false;
+        let stream = null;
+        let totalAttempts = 0;
+        let validAttempts = 0;
+        let lastScanned = [];
+
+        // 載入書單
+        fetch('books_list.json')
+            .then(res => res.json())
+            .then(data => {
+                bookList = data;
+                document.getElementById('result').innerHTML = `
+                    <div class="mega-text" style="color: #00e676;">📚 戰備完成</div>
+                    <div style="font-size: 20px; margin-top: 10px;">
+                        已載入 <strong>${data.length}</strong> 本書籍資料<br>
+                        終極掃描引擎準備就緒
+                    </div>
+                `;
+            })
+            .catch(error => {
+                document.getElementById('result').innerHTML = '<div class="error mega-text">❌ 書單載入失敗</div>';
+            });
+
+        // 多重條碼處理引擎
+        function multiProcessBarcode(rawCode) {
+            const results = [];
+            const cleaned = rawCode.replace(/\D/g, '');
+
+            // 方法1: 標準處理
+            results.push(cleaned);
+
+            // 方法2: 複合條碼處理
+            if (cleaned.length === 18) results.push(cleaned.substring(0, 13));
+            if (cleaned.length === 15) results.push(cleaned.substring(0, 10));
+            if (cleaned.length > 13) results.push(cleaned.substring(0, 13));
+            if (cleaned.length > 10) results.push(cleaned.substring(0, 10));
+
+            // 方法3: 移除可能的校驗碼
+            if (cleaned.length > 10) results.push(cleaned.substring(0, cleaned.length - 1));
+
+            // 方法4: 從不同位置截取
+            if (cleaned.length > 13) {
+                for (let i = 0; i <= cleaned.length - 10; i++) {
+                    results.push(cleaned.substring(i, i + 13));
+                    results.push(cleaned.substring(i, i + 10));
+                }
+            }
+
+            // 去重並過濾
+            return [...new Set(results)].filter(code => code.length >= 8);
+        }
+
+        // 智能書籍查找
+        function smartBookSearch(isbn) {
+            const candidates = multiProcessBarcode(isbn);
+            console.log('多重處理結果:', candidates);
+
+            for (let candidate of candidates) {
+                const found = bookList.find(book => {
+                    if (!book.ISBN) return false;
+                    const bookIsbn = book.ISBN.replace(/\D/g, '');
+
+                    // 精確匹配
+                    if (bookIsbn === candidate) return true;
+
+                    // 模糊匹配 (去除最後一位校驗碼)
+                    if (bookIsbn.length > 10 && candidate.length > 10) {
+                        if (bookIsbn.substring(0, bookIsbn.length - 1) === candidate.substring(0, candidate.length - 1)) return true;
+                    }
+
+                    // 包含匹配
+                    if (bookIsbn.includes(candidate) || candidate.includes(bookIsbn)) {
+                        if (Math.abs(bookIsbn.length - candidate.length) <= 1) return true;
+                    }
+
+                    return false;
+                });
+
+                if (found) {
+                    console.log('✅ 找到匹配:', candidate, '->', found.書名);
+                    return { found, matchedCode: candidate };
+                }
+            }
+
+            return { found: null, matchedCode: candidates[0] };
+        }
+
+        function checkBook(isbn) {
+            const result = smartBookSearch(isbn);
+
+            if (result.found) {
+                document.getElementById('result').innerHTML = `
+                    <div class="success">
+                        <div class="mega-text">🎉 掃描成功！</div>
+                        <div style="font-size: 24px; margin: 15px 0; font-weight: bold;">
+                            ${result.found.書名}
+                        </div>
+                        <div class="status-bar">
+                            <div>📖 ISBN: ${result.found.ISBN}</div>
+                            <div>👥 適合: ${result.found.適合對象 || '未標示'}</div>
+                            <div>🔍 匹配碼: ${result.matchedCode}</div>
+                            <div>📊 掃描統計: ${validAttempts}/${totalAttempts}</div>
+                        </div>
+                        <div style="margin-top: 20px; padding: 15px; background: #00c853; border-radius: 10px; font-size: 20px;">
+                            ✅ 這是布可星球選書！
+                        </div>
+                    </div>
+                `;
+            } else {
+                document.getElementById('result').innerHTML = `
+                    <div class="error">
+                        <div class="mega-text">❌ 不在書單中</div>
+                        <div style="font-size: 18px; margin: 15px 0;">
+                            這本書不是布可星球選書
+                        </div>
+                        <div class="status-bar">
+                            <div>🔍 原始條碼: ${isbn}</div>
+                            <div>🔍 處理後碼: ${result.matchedCode}</div>
+                            <div>📊 掃描統計: ${validAttempts}/${totalAttempts}</div>
+                            <div>🔄 嘗試的所有候選碼:</div>
+                            <div style="font-size: 14px; color: #ccc;">
+                                ${multiProcessBarcode(isbn).join(', ')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // 超級手電筒
+        async function toggleFlash() {
+            try {
+                if (!stream) {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: "environment",
+                            // 嘗試最高解析度
+                            width: { ideal: 4096, min: 640 },
+                            height: { ideal: 2160, min: 480 }
+                        }
+                    });
+                }
+
+                const track = stream.getVideoTracks()[0];
+                const capabilities = track.getCapabilities();
+
+                if (capabilities.torch) {
+                    flashOn = !flashOn;
+                    await track.applyConstraints({
+                        advanced: [{ torch: flashOn }]
+                    });
+
+                    const flashBtn = document.getElementById('flashBtn');
+                    if (flashOn) {
+                        flashBtn.textContent = '💡 關燈';
+                        flashBtn.style.background = '#ff1744';
+                        flashBtn.style.animation = 'none';
+                    } else {
+                        flashBtn.textContent = '💡 超亮手電筒';
+                        flashBtn.style.background = '#ff6d00';
+                        flashBtn.style.animation = 'glow 1.5s infinite';
+                    }
+                } else {
+                    document.getElementById('flashBtn').textContent = '❌ 不支援手電筒';
+                }
+            } catch (error) {
+                console.error('手電筒錯誤:', error);
+            }
+        }
+
+        async function startScan() {
+            if (running) return;
+
+            running = true;
+            scanned = false;
+            totalAttempts = 0;
+            validAttempts = 0;
+            lastScanned = [];
+
+            // 更新界面
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('restartBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'inline-block';
+            document.getElementById('flashBtn').style.display = 'inline-block';
+            document.getElementById('reader').style.display = 'block';
+
+            document.getElementById('result').innerHTML = `
+                <div style="background: linear-gradient(135deg, #00e676, #00c853); color: black; padding: 25px; border-radius: 20px; margin: 10px 0;">
+                    <div class="mega-text">🎯 終極掃描模式啟動</div>
+                    <div style="font-size: 18px; margin-top: 15px;">
+                        🔥 多重引擎並行掃描<br>
+                        💡 <strong>強烈建議開啟手電筒</strong><br>
+                        📏 保持 15-20 公分距離<br>
+                        🎯 讓條碼填滿掃描框
+                    </div>
+                </div>
+                <div class="status-bar">
+                    <div style="font-size: 20px; color: #00e676;">
+                        🔄 掃描中... 
+                        總嘗試: <span id="totalCounter">0</span> | 
+                        有效: <span id="validCounter">0</span>
+                    </div>
+                </div>
+            `;
+
+            try {
+                html5Qr = new Html5Qrcode("reader");
+
+                await html5Qr.start(
+                    { facingMode: "environment" },
+                    {
+                        fps: 30,  // 超高頻率 - 最大化嘗試次數
+                        qrbox: { width: 200, height: 100 },  // 較小掃描框提高精度
+                        aspectRatio: 2.0,
+                        disableFlip: false,
+                        experimentalFeatures: {
+                            useBarCodeDetectorIfSupported: true
+                        }
+                    },
+                    (decodedText, decodedResult) => {
+                        totalAttempts++;
+                        document.getElementById('totalCounter').textContent = totalAttempts;
+
+                        // 超寬鬆過濾 - 接受任何4位以上的條碼
+                        const cleaned = decodedText.replace(/\D/g, '');
+                        if (cleaned.length < 4) {
+                            return;
+                        }
+
+                        validAttempts++;
+                        document.getElementById('validCounter').textContent = validAttempts;
+
+                        // 記錄最近掃描的條碼 (避免重複處理)
+                        if (lastScanned.includes(decodedText)) {
+                            return;
+                        }
+                        lastScanned.push(decodedText);
+                        if (lastScanned.length > 10) lastScanned.shift();
+
+                        console.log(`🎯 第 ${validAttempts} 個有效條碼: ${decodedText}`);
+
+                        if (scanned) return;
+                        scanned = true;
+
+                        document.getElementById('result').innerHTML = `
+                            <div style="background: #00e676; color: black; padding: 25px; border-radius: 20px;">
+                                <div class="mega-text">✅ 條碼捕獲成功！</div>
+                                <div style="font-size: 20px; margin: 15px 0;">
+                                    經過 ${totalAttempts} 次總嘗試<br>
+                                    其中 ${validAttempts} 次有效掃描<br>
+                                    條碼: ${decodedText}
+                                </div>
+                                <div style="font-size: 16px; color: #333;">
+                                    🔄 正在進行多重比對...
+                                </div>
+                            </div>
+                        `;
+
+                        setTimeout(() => {
+                            checkBook(decodedText);
+                            setTimeout(stopScan, 5000);
+                        }, 2000);
+                    },
+                    (errorMsg) => {
+                        totalAttempts++;
+                        if (document.getElementById('totalCounter')) {
+                            document.getElementById('totalCounter').textContent = totalAttempts;
+                        }
+                    }
+                );
+
+                console.log('🚀 終極掃描引擎啟動成功');
+
+            } catch (error) {
+                console.error('終極掃描器啟動失敗:', error);
+                document.getElementById('result').innerHTML = `
+                    <div class="error mega-text">
+                        ❌ 掃描引擎啟動失敗<br>
+                        <div style="font-size: 16px; margin-top: 10px;">
+                            ${error.message}
+                        </div>
+                    </div>
+                `;
+                stopScan();
+            }
+        }
+
+        function stopScan() {
+            running = false;
+
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'none';
+            document.getElementById('flashBtn').style.display = 'none';
+            document.getElementById('restartBtn').style.display = 'inline-block';
+            document.getElementById('reader').style.display = 'none';
+
+            if (html5Qr) {
+                html5Qr.stop().then(() => html5Qr.clear()).catch(() => { });
+            }
+        }
+
+        // 事件監聽
+        document.getElementById('startBtn').onclick = startScan;
+        document.getElementById('stopBtn').onclick = stopScan;
+        document.getElementById('restartBtn').onclick = startScan;
+        document.getElementById('flashBtn').onclick = toggleFlash;
+    </script>
+</body>
+
+</html>

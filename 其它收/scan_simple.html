@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <title>布可星球條碼查詢 - 簡化版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 1em;
+            background: #f0f0f0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            font-size: 16px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px;
+            min-width: 120px;
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        #reader {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+        }
+
+        #result {
+            margin: 20px auto;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .1);
+            max-width: 600px;
+            word-break: break-word;
+            min-height: 3em;
+            line-height: 1.5;
+            border: 2px solid #e0e0e0;
+        }
+
+        .success {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .error {
+            color: #f44336;
+            font-weight: bold;
+        }
+
+        h1 {
+            color: #2196F3;
+            margin-bottom: 1em;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>布可星球條碼查詢 (測試版)</h1>
+        <button class="btn" id="startBtn">開始掃描</button>
+        <button class="btn" id="stopBtn" style="display:none">停止掃描</button>
+        <button class="btn" id="restartBtn" style="display:none; background:#4CAF50">重新掃描</button>
+        <div id="reader" style="display:none"></div>
+        <div id="result">請點擊開始掃描</div>
+    </div>
+    <script>
+        let bookList = [];
+        let html5Qr = null;
+        let running = false;
+        let scanned = false;
+
+        // 載入書單
+        fetch('books_list.json')
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.json();
+            })
+            .then(data => {
+                bookList = data;
+                document.getElementById('result').textContent = `準備就緒，已載入${data.length}本書，請點擊開始掃描`;
+            })
+            .catch(error => {
+                console.error('書單載入錯誤:', error);
+                document.getElementById('result').innerHTML = '<span class="error">書單載入失敗</span>';
+            });
+
+        function checkBook(isbn) {
+            if (!bookList.length) {
+                document.getElementById('result').innerHTML = '<span class="error">書單未載入</span>';
+                return;
+            }
+
+            const cleanIsbn = isbn.replace(/\D/g, '');
+
+            // 處理複合條碼
+            let finalIsbn = cleanIsbn;
+            if (cleanIsbn.length === 18) {
+                finalIsbn = cleanIsbn.substring(0, 13);
+            } else if (cleanIsbn.length > 15) {
+                finalIsbn = cleanIsbn.substring(0, 13);
+            }
+
+            if (finalIsbn.length < 6) {
+                document.getElementById('result').innerHTML = '<span class="error">條碼太短，可能是價格碼</span>';
+                return;
+            }
+
+            if (finalIsbn.length !== 10 && finalIsbn.length !== 13) {
+                document.getElementById('result').innerHTML = '<span class="error">無效的 ISBN 格式</span>';
+                return;
+            }
+
+            const found = bookList.find(b => {
+                if (!b.ISBN) return false;
+                const bookCleanIsbn = b.ISBN.replace(/\D/g, '');
+                return bookCleanIsbn === finalIsbn;
+            });
+
+            if (found) {
+                document.getElementById('result').innerHTML = `
+                    <div class="success">
+                        <h2>✓ 布可星球選書</h2>
+                        <hr>
+                        書名：${found.書名}<br>
+                        ISBN：${found.ISBN}<br>
+                        適合對象：${found.適合對象 || '未提供'}
+                    </div>`;
+            } else {
+                document.getElementById('result').innerHTML = `
+                    <div class="error">
+                        <h2>✗ 非布可星球書本</h2>
+                        <hr>
+                        掃描的 ISBN：${isbn}
+                    </div>`;
+            }
+        }
+
+        function startScan() {
+            if (running) return;
+
+            running = true;
+            scanned = false;
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('restartBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'inline-block';
+            document.getElementById('reader').style.display = 'block';
+            document.getElementById('result').textContent = '掃描中...請將條碼對準鏡頭';
+
+            try {
+                html5Qr = new Html5Qrcode("reader");
+
+                html5Qr.start(
+                    { facingMode: "environment" },
+                    {
+                        fps: 10,
+                        qrbox: 250
+                    },
+                    (decodedText, decodedResult) => {
+                        if (scanned) return;
+                        scanned = true;
+                        console.log('掃描結果:', decodedText);
+                        checkBook(decodedText);
+                        setTimeout(stopScan, 1000);
+                    },
+                    (errorMsg) => { }
+                ).catch(err => {
+                    console.error('掃描啟動失敗:', err);
+                    document.getElementById('result').innerHTML = `<span class="error">鏡頭啟動失敗：請檢查攝影機權限</span>`;
+                    stopScan();
+                });
+            } catch (error) {
+                console.error('初始化失敗:', error);
+                document.getElementById('result').innerHTML = `<span class="error">初始化失敗：${error.message}</span>`;
+                stopScan();
+            }
+        }
+
+        function stopScan() {
+            running = false;
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'none';
+            document.getElementById('restartBtn').style.display = 'inline-block';
+            document.getElementById('reader').style.display = 'none';
+
+            if (html5Qr) {
+                html5Qr.stop().then(() => {
+                    html5Qr.clear();
+                }).catch(() => { });
+            }
+        }
+
+        document.getElementById('startBtn').onclick = startScan;
+        document.getElementById('stopBtn').onclick = stopScan;
+        document.getElementById('restartBtn').onclick = startScan;
+    </script>
+</body>
+
+</html>

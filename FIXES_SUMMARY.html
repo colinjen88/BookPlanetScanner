@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>修正測試</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f0f0f0;
+        }
+
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .success {
+            color: #059669;
+            font-weight: bold;
+        }
+
+        .warning {
+            color: #d97706;
+            font-weight: bold;
+        }
+
+        code {
+            background: #f1f5f9;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>📘 條碼掃描器修正確認</h1>
+
+    <div class="test-section">
+        <h2>✅ 已完成的修正項目</h2>
+
+        <h3>1. Popover 初始狀態修正</h3>
+        <p class="success">✓ 已修正</p>
+        <p>原因：新增 <code>style="display: none;"</code> 確保 popover 初始時隱藏</p>
+
+        <h3>2. Popover 持續時間調整</h3>
+        <p class="success">✓ 已修正</p>
+        <p>變更：從 3000ms (3秒) 改為 1500ms (1.5秒)</p>
+
+        <h3>3. 滾動隱藏功能</h3>
+        <p class="success">✓ 已新增</p>
+        <p>新增功能：
+            <br>• <code>window.addEventListener('scroll', hidePopover)</code>
+            <br>• <code>window.addEventListener('touchmove', hidePopover)</code>
+            <br>• 新增 <code>hidePopover()</code> 輔助函數
+        </p>
+
+        <h3>4. 底部排版優化</h3>
+        <p class="success">✓ 已修正</p>
+        <p>改善項目：
+            <br>• 修正版權區塊對齊問題
+            <br>• 優化 app-info 區塊間距
+            <br>• 調整 body padding 讓 footer 更貼合
+            <br>• 改善版本標籤樣式
+        </p>
+    </div>
+
+    <div class="test-section">
+        <h2>🔧 技術細節</h2>
+
+        <h3>Popover 修正</h3>
+        <ul>
+            <li><strong>初始隱藏：</strong>HTML 中加入 <code>style="display: none;"</code></li>
+            <li><strong>顯示時：</strong>設定 <code>popover.style.display = 'block'</code></li>
+            <li><strong>隱藏時：</strong>設定 <code>popover.style.display = 'none'</code></li>
+            <li><strong>時間控制：</strong>從 3000ms 改為 1500ms</li>
+        </ul>
+
+        <h3>滾動偵測</h3>
+        <ul>
+            <li><strong>桌面滾動：</strong><code>scroll</code> 事件</li>
+            <li><strong>觸控滑動：</strong><code>touchmove</code> 事件</li>
+            <li><strong>即時隱藏：</strong>滾動開始立即隱藏 popover</li>
+        </ul>
+
+        <h3>底部樣式</h3>
+        <ul>
+            <li><strong>對齊修正：</strong><code>justify-content: flex-end</code> 取代 <code>center</code></li>
+            <li><strong>間距調整：</strong>新增 <code>gap: 8px</code> 和 <code>margin-bottom: 8px</code></li>
+            <li><strong>版本標籤：</strong>新增背景色和邊框提升視覺效果</li>
+            <li><strong>頁面間距：</strong>調整 body padding 避免底部過多空白</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>📱 測試建議</h2>
+        <ol>
+            <li><strong>Popover 測試：</strong>
+                <br>• 重新載入頁面，確認 popover 不會立即顯示
+                <br>• 掃描成功時，觀察 popover 是否只顯示 1.5 秒
+                <br>• 在 popover 顯示期間滑動頁面，確認會立即消失
+            </li>
+            <li><strong>響應式測試：</strong>
+                <br>• 在不同螢幕尺寸下測試底部排版
+                <br>• 確認手機版本的底部區塊置中對齊正常
+            </li>
+            <li><strong>功能測試：</strong>
+                <br>• 確認所有原有功能正常運作
+                <br>• 測試手電筒、掃描等功能未受影響
+            </li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>🎯 修正總結</h2>
+        <p>本次修正解決了以下使用者體驗問題：</p>
+        <ul>
+            <li>✅ 修正 popover 載入時立即顯示的問題</li>
+            <li>✅ 調整 popover 顯示時間符合使用者需求</li>
+            <li>✅ 新增滾動時自動隱藏功能，避免阻擋內容</li>
+            <li>✅ 優化底部排版，提升整體視覺呈現</li>
+        </ul>
+        <p class="success">所有修正均已完成，可以進行測試！</p>
+    </div>
+</body>
+
+</html>
