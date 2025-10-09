@@ -153,22 +153,22 @@ if __name__ == "__main__":
     # 分批處理中文書籍
     print("=" * 50)
     print("第一批：中文書籍 第1-80頁")
-    zh_books_1 = fetch_books_batch(lang_code='1', start_page=1, end_page=80, progress_file='zh_books_1_80.json')
+    zh_books_1 = fetch_books_batch(lang_code='1', start_page=1, end_page=80, progress_file='../進度檔案/zh_books_1_80.json')
     print(f"第一批完成，共 {len(zh_books_1)} 本")
     
     print("=" * 50)
     print("第二批：中文書籍 第81-160頁")
-    zh_books_2 = fetch_books_batch(lang_code='1', start_page=81, end_page=160, progress_file='zh_books_81_160.json')
+    zh_books_2 = fetch_books_batch(lang_code='1', start_page=81, end_page=160, progress_file='../進度檔案/zh_books_81_160.json')
     print(f"第二批完成，共 {len(zh_books_2)} 本")
     
     print("=" * 50)
     print("第三批：中文書籍 第161-242頁")
-    zh_books_3 = fetch_books_batch(lang_code='1', start_page=161, end_page=242, progress_file='zh_books_161_242.json')
+    zh_books_3 = fetch_books_batch(lang_code='1', start_page=161, end_page=242, progress_file='../進度檔案/zh_books_161_242.json')
     print(f"第三批完成，共 {len(zh_books_3)} 本")
     
     print("=" * 50)
     print("第四批：英文書籍 第1-11頁")
-    en_books = fetch_books_batch(lang_code='2', start_page=1, end_page=11, progress_file='en_books.json')
+    en_books = fetch_books_batch(lang_code='2', start_page=1, end_page=11, progress_file='../進度檔案/en_books.json')
     print(f"英文書籍完成，共 {len(en_books)} 本")
     
     # 合併所有結果
@@ -177,7 +177,7 @@ if __name__ == "__main__":
     print(f"總共抓取到 {len(all_books)} 本書籍")
     
     # 保存完整結果
-    save_progress(all_books, 'all_books_complete.json')
+    save_progress(all_books, '../進度檔案/all_books_complete.json')
     
     if len(all_books) > 0:
         print("開始更新Google Sheets...")

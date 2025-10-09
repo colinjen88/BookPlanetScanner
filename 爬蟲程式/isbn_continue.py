@@ -205,28 +205,28 @@ if __name__ == "__main__":
             'lang_code': '1',
             'start_page': 1,
             'end_page': 80,
-            'progress_file': 'zh_books_1_80.json'
+            'progress_file': '../進度檔案/zh_books_1_80.json'
         },
         {
             'name': '第二批：中文書籍 第81-160頁',
             'lang_code': '1',
             'start_page': 81,
             'end_page': 160,
-            'progress_file': 'zh_books_81_160.json'
+            'progress_file': '../進度檔案/zh_books_81_160.json'
         },
         {
             'name': '第三批：中文書籍 第161-242頁',
             'lang_code': '1',
             'start_page': 161,
             'end_page': 242,
-            'progress_file': 'zh_books_161_242.json'
+            'progress_file': '../進度檔案/zh_books_161_242.json'
         },
         {
             'name': '第四批：英文書籍 第1-11頁',
             'lang_code': '2',
             'start_page': 1,
             'end_page': 11,
-            'progress_file': 'en_books.json'
+            'progress_file': '../進度檔案/en_books.json'
         }
     ]
     
@@ -263,8 +263,8 @@ if __name__ == "__main__":
         all_books = unique_books
     
     # 保存完整結果
-    save_progress(all_books, 'all_books_complete.json')
-    print(f"   已保存完整結果到 all_books_complete.json")
+    save_progress(all_books, '../進度檔案/all_books_complete.json')
+    print(f"   已保存完整結果到 ../進度檔案/all_books_complete.json")
     
     if len(all_books) > 0:
         update_sheet(sheet, all_books)
