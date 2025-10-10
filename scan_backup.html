@@ -39,14 +39,14 @@
     <div class="container">
         <div class="header-row">
             <h1>📘<span>布可星球查詢</span></h1>
+            <div class="flash-button-container">
+                <button class="flash-off-btn" id="flashOffBtn" disabled>� 開啟</button>
+                <button class="flash-on-btn" id="flashOnBtn" disabled style="display: none;">💡 關閉</button>
+            </div>
         </div>
         <p class="subtitle">掃描書本條碼，判別是否為布可星球選書。</p>
 
         <div class="button-row">
-            <div class="flash-controls">
-                <button class="flash-btn flash-off" id="flashOffNew">💡 開啟</button>
-                <button class="flash-btn flash-on" id="flashOnNew" style="display: none;">💡 關閉</button>
-            </div>
             <button class="btn btn-main" id="startBtn">🚀 開始掃描條碼</button>
             <button class="btn btn-main danger" id="stopBtn" disabled style="display: none;">⏹️ 停止</button>
         </div>
@@ -76,13 +76,21 @@
     <canvas id="scratchCanvas" class="hidden"></canvas>
 
     <script>
+        /**
+         * 布可星球條碼掃描器 - 雙按鈕手電筒版本
+         * 功能：即時掃描ISBN條碼，查詢是否為布可星球選書
+         * 技術：雙引擎掃描 (BarcodeDetector + ZXing)
+         * 版本：v5.0 - 雙按鈕手電筒設計
+         * 更新：2025/10/10
+         */
         (() => {
             // === DOM 元素快取 ===
+            // 快取所有需要操作的DOM元素，避免重複查詢
             const elements = {
                 startBtn: document.getElementById('startBtn'),
                 stopBtn: document.getElementById('stopBtn'),
-                flashOffBtn: document.getElementById('flashOffNew'),
-                flashOnBtn: document.getElementById('flashOnNew'),
+                flashOffBtn: document.getElementById('flashOffBtn'),   // 藍色開啟按鈕
+                flashOnBtn: document.getElementById('flashOnBtn'),     // 橘色關閉按鈕
                 preview: document.getElementById('preview'),
                 roiOverlay: document.getElementById('roiOverlay'),
                 engineBadge: document.getElementById('engineBadge'),
@@ -94,28 +102,29 @@
             };
 
             // === Canvas 元素和上下文 ===
+            // 用於影像處理的離屏Canvas，提升掃描效能
             const processingCanvas = document.getElementById('processingCanvas');
             const processingCtx = processingCanvas.getContext('2d', { willReadFrequently: true });
             const scratchCanvas = document.getElementById('scratchCanvas');
             const scratchCtx = scratchCanvas.getContext('2d', { willReadFrequently: true });
 
-            // === 應用程式狀態 ===
+            // === 應用程式狀態管理 ===
             const state = {
-                // 掃描狀態
-                running: false,
-                detectionBusy: false,
-                lastDetectionAt: 0,
+                // 掃描狀態控制
+                running: false,             // 掃描器運行狀態
+                detectionBusy: false,       // 條碼檢測忙碌狀態
+                lastDetectionAt: 0,         // 最後檢測時間戳
 
-                // 資料狀態
-                bookList: [],
-                stream: null,
-                track: null,
-                flashOn: false,
+                // 資料和設備狀態
+                bookList: [],               // 布可星球書籍清單
+                stream: null,               // MediaStream 攝影機串流
+                track: null,                // VideoTrack 影像軌道
+                flashOn: false,             // 手電筒開啟狀態
 
-                // 檢測引擎
+                // 雙引擎條碼檢測器
                 detectors: {
-                    barcodeDetector: null,
-                    multiFormatReader: null
+                    barcodeDetector: null,      // 原生 BarcodeDetector API
+                    multiFormatReader: null     // ZXing MultiFormatReader
                 },
 
                 // 統計資料
@@ -1010,9 +1019,8 @@
             }
 
             /**
-             * 開啟手電筒功能 - UI-first 模式
-             * 第一步：立即更新UI狀態（零延遲）
-             * 第二步：執行硬體操作（可能有延遲）
+             * 開啟手電筒功能 (藍色按鈕點擊)
+             * 即時切換UI狀態，提供零延遲使用體驗
              */
             async function turnOnFlash() {
                 if (!state.track) return;
@@ -1021,27 +1029,20 @@
                     return;
                 }
 
-                // 第一步：立即更新UI狀態（零延遲反應）
-                elements.flashOffBtn.style.display = 'none';
-                elements.flashOnBtn.style.display = 'block';
-                state.flashOn = true;
-
-                // 第二步：執行硬體操作（可能有延遲）
                 try {
                     await state.track.applyConstraints({ advanced: [{ torch: true }] });
+                    state.flashOn = true;
+                    // 即時切換按鈕顯示 - 零延遲UI更新
+                    elements.flashOffBtn.style.display = 'none';    // 隱藏藍色開啟按鈕
+                    elements.flashOnBtn.style.display = 'block';    // 顯示橘色關閉按鈕
                 } catch (error) {
-                    // 如果硬體操作失敗，恢復UI狀態
-                    elements.flashOffBtn.style.display = 'block';
-                    elements.flashOnBtn.style.display = 'none';
-                    state.flashOn = false;
                     log(`手電筒開啟失敗：${error.message}`);
                 }
             }
 
             /**
-             * 關閉手電筒功能 - UI-first 模式
-             * 第一步：立即更新UI狀態（零延遲）
-             * 第二步：執行硬體操作（可能有延遲）
+             * 關閉手電筒功能 (橘色按鈕點擊)
+             * 即時切換UI狀態，提供零延遲使用體驗
              */
             async function turnOffFlash() {
                 if (!state.track) return;
@@ -1050,24 +1051,16 @@
                     return;
                 }
 
-                // 第一步：立即更新UI狀態（零延遲反應）
-                elements.flashOffBtn.style.display = 'block';
-                elements.flashOnBtn.style.display = 'none';
-                state.flashOn = false;
-
-                // 第二步：執行硬體操作（可能有延遲）
                 try {
                     await state.track.applyConstraints({ advanced: [{ torch: false }] });
+                    state.flashOn = false;
+                    // 即時切換按鈕顯示 - 零延遲UI更新
+                    elements.flashOffBtn.style.display = 'block';   // 顯示藍色開啟按鈕
+                    elements.flashOnBtn.style.display = 'none';     // 隱藏橘色關閉按鈕
                 } catch (error) {
-                    // 如果硬體操作失敗，恢復UI狀態
-                    elements.flashOffBtn.style.display = 'none';
-                    elements.flashOnBtn.style.display = 'block';
-                    state.flashOn = true;
                     log(`手電筒關閉失敗：${error.message}`);
                 }
-            }
-
-            function updateCameraStatusText() {
+            } function updateCameraStatusText() {
                 if (!state.track) {
                     elements.cameraStatus.textContent = '尚未啟動';
                     return;
