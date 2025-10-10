@@ -194,6 +194,7 @@ h1 span {
     flex: 0 0 25%;
     position: relative;
     order: -1; /* 確保在最左邊 */
+    height: 56px; /* 固定高度，防止佈局跳動 */
 }
 
 /* 新的手電筒按鈕樣式 */
@@ -218,6 +219,7 @@ h1 span {
     top: 0;
     left: 0;
     right: 0;
+    bottom: 0;
     user-select: none;
     touch-action: manipulation;
     will-change: auto;
@@ -247,10 +249,6 @@ h1 span {
 .flash-btn:hover:not(:disabled) {
     opacity: 0.9;
     transition: none !important;
-}
-
-.button-row .btn-flash {
-    flex: 0 0 calc(33.333% - 8px);
 }
 
 .button-row .btn-main {
