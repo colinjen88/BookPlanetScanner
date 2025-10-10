@@ -25,7 +25,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script src="https://unpkg.com/@zxing/browser@latest"></script>
     <script src="https://code.iconify.design/3/3.1.1/iconify.min.js"></script>
-    <link rel="stylesheet" href="scan.css?123">
+    <link rel="stylesheet" href="scan.css?2">
 </head>
 
 <body>
@@ -958,11 +958,11 @@
                     if (capabilities && capabilities.torch) {
                         elements.flashBtnHeader.disabled = false;
                         elements.flashBtnHeader.classList.remove('flash-on');
-                        elements.flashIconHeader.textContent = '�手電筒';
+                        elements.flashIconHeader.textContent = '🔦手電筒';
                     } else {
                         elements.flashBtnHeader.disabled = true;
                         elements.flashBtnHeader.classList.remove('flash-on');
-                        elements.flashIconHeader.textContent = '�手電筒';
+                        elements.flashIconHeader.textContent = '🔦手電筒';
                     }
 
                     state.flashOn = false;
@@ -1012,7 +1012,7 @@
                 elements.stopBtn.style.display = 'none';
                 elements.flashBtnHeader.disabled = true;
                 elements.flashBtnHeader.classList.remove('flash-on');
-                elements.flashIconHeader.textContent = '�手電筒';
+                elements.flashIconHeader.textContent = '🔦手電筒';
                 state.flashOn = false;
                 updateCameraStatusText();
                 if (resetStatsToo) {
@@ -1031,7 +1031,7 @@
                 state.flashOn = !state.flashOn;
                 try {
                     await state.track.applyConstraints({ advanced: [{ torch: state.flashOn }] });
-                    elements.flashIconHeader.textContent = state.flashOn ? '�關閉手電筒' : '�手電筒';
+                    elements.flashIconHeader.textContent = state.flashOn ? '💡關閉手電筒' : '🔦手電筒';
                     elements.flashBtnHeader.classList.toggle('flash-on', state.flashOn);
                 } catch (error) {
                     log(`手電筒切換失敗：${error.message}`);
@@ -1243,7 +1243,7 @@
 
                     const replyButton = !isReply ? `
                         <div class="message-actions">
-                            <button class="reply-btn" onclick="toggleReplyForm('${msg.id || msg.time}')">
+                            <button class="reply-btn" data-message-id="${msg.id || msg.time}">
                                 💬 回覆
                             </button>
                         </div>
@@ -1258,8 +1258,8 @@
                                 <textarea placeholder="回覆內容..." id="replyContent_${msg.id || msg.time}" required></textarea>
                             </div>
                             <div class="reply-actions">
-                                <button class="reply-submit-btn" onclick="submitReply('${msg.id || msg.time}')">送出回覆</button>
-                                <button class="reply-cancel-btn" onclick="toggleReplyForm('${msg.id || msg.time}')">取消</button>
+                                <button class="reply-submit-btn" data-message-id="${msg.id || msg.time}">送出回覆</button>
+                                <button class="reply-cancel-btn" data-message-id="${msg.id || msg.time}">取消</button>
                             </div>
                         </div>
                     ` : '';
@@ -1699,6 +1699,58 @@
                 if (msgForm) {
                     msgForm.addEventListener('submit', submitMessage);
                 }
+
+                // 添加事件委托優化留言點擊性能
+                if (messagesDiv) {
+                    messagesDiv.addEventListener('click', (event) => {
+                        const target = event.target;
+
+                        // 處理留言名稱點擊
+                        if (target.classList.contains('message-name')) {
+                            const messageElement = target.closest('.message');
+                            const messageId = messageElement.getAttribute('data-id');
+                            if (messageId) {
+                                toggleReplyForm(messageId);
+                            }
+                        }
+
+                        // 處理留言內容點擊
+                        if (target.classList.contains('message-content')) {
+                            const messageElement = target.closest('.message');
+                            const messageId = messageElement.getAttribute('data-id');
+                            if (messageId) {
+                                toggleReplyForm(messageId);
+                            }
+                        }
+
+                        // 處理回覆按鈕點擊
+                        if (target.classList.contains('reply-btn')) {
+                            const messageElement = target.closest('.message');
+                            const messageId = messageElement.getAttribute('data-id');
+                            if (messageId) {
+                                toggleReplyForm(messageId);
+                            }
+                        }
+
+                        // 處理送出回覆按鈕點擊
+                        if (target.classList.contains('reply-submit-btn')) {
+                            const messageElement = target.closest('.message');
+                            const messageId = messageElement.getAttribute('data-id');
+                            if (messageId) {
+                                submitReply(messageId);
+                            }
+                        }
+
+                        // 處理取消回覆按鈕點擊
+                        if (target.classList.contains('reply-cancel-btn')) {
+                            const messageElement = target.closest('.message');
+                            const messageId = messageElement.getAttribute('data-id');
+                            if (messageId) {
+                                toggleReplyForm(messageId);
+                            }
+                        }
+                    });
+                }
             }
 
             // 等待 DOM 完全載入
@@ -1762,7 +1814,7 @@
     </footer>
 
     <!-- 留言版區塊 (初始隱藏，放置在最後面) -->
-    <div class="feedback-section" id="feedbackSection" style="display: none;">
+    <div class="feedback-section" id="feedbackSection" style="display: none; margin-top: 100px;">
         <div class="feedback-container">
             <button class="feedback-close-btn" onclick="closeFeedback()" title="關閉留言區">✕ 關閉留言</button>
             <h3>💬 留言回饋</h3>

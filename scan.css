@@ -104,9 +104,118 @@ h1 span {
         0 3px 12px rgba(37, 99, 235, 0.2);
 }
 
-.header-flash-btn.flash-on {
+.header-flash-btn:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+    transition: all 0.05s ease;
+}
+
+/* 手電筒按鈕基礎樣式 - 確保即時切換 */
+.header-flash-btn {
+    transition: none !important;
+    /* 完全移除過渡效果，確保即時切換 */
+}
+
+/* 按下時的即時反饋 */
+.header-flash-btn:active:not(:disabled) {
+    transform: scale(0.95) !important;
+    transition: none !important; /* 確保按下反饋是即時的 */
+}
+
+/* 手電筒按鈕開啟狀態的文字顏色 */
+.header-flash-btn.flash-on #flashIconHeader {
+    color: #fff !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* 確保手電筒按鈕狀態切換是即時的 */
+.header-flash-btn, 
+.header-flash-btn * {
+    will-change: auto; /* 移除 will-change 以避免合成層問題 */
+}
+
+/* 手電筒按鈕的觸控優化 */
+.header-flash-btn {
+    touch-action: manipulation; /* 移除觸控延遲 */
+    user-select: none; /* 防止文字選取 */
+}
+
+/* 手電筒按鈕 mousedown 狀態 */
+.header-flash-btn:active {
+    outline: none;
+}
+
+/* 優化所有按鈕的響應性 */
+.reply-btn, .reply-cancel-btn, .reply-submit-btn, .feedback-btn {
+    transition: all 0.1s ease !important;
+    will-change: transform, opacity;
+}
+
+.reply-btn:active, .reply-cancel-btn:active, .reply-submit-btn:active, .feedback-btn:active {
+    transform: scale(0.95);
+    opacity: 0.8;
+}
+
+/* 優化留言區塊的點擊反饋 */
+.message {
+    transition: background-color 0.1s ease;
+}
+
+.message:hover {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+/* 防止長時間動畫造成的性能問題 */
+.message-actions button {
+    backface-visibility: hidden;
+    transform: translateZ(0);
+}
+
+/* 手電筒按鈕容器 */
+.flash-button-container {
+    position: absolute;
+    right: 0;
+    top: 0;
+}
+
+/* 手電筒按鈕統一樣式 */
+.flash-off-btn,
+.flash-on-btn {
+    width: 100px;
+    height: 36px;
+    color: #fff;
+    border: none;
+    padding: 0;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+    display: block;
+    box-sizing: border-box;
+    text-align: center;
+    line-height: 36px;
+    position: absolute;
+    right: 0;
+    top: 0;
+}
+
+/* 手電筒關閉按鈕（藍色） */
+.flash-off-btn {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+}
+
+/* 手電筒開啟按鈕（橘色） */
+.flash-on-btn {
     background: linear-gradient(135deg, #f59e0b, #d97706);
-    animation: header-flash-pulse 1.2s ease-in-out infinite;
+}
+
+/* 按鈕禁用狀態 */
+.flash-off-btn:disabled,
+.flash-on-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
 }
 
 @keyframes header-flash-pulse {
@@ -1225,6 +1334,13 @@ display: flex;
     font-weight: 600;
     color: #3b82f6;
     font-size: 18px;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.feedback-section .message-name:hover {
+    color: #1d4ed8;
+    text-decoration: underline;
 }
 
 .feedback-section .message-time {
@@ -1242,6 +1358,14 @@ display: flex;
     word-wrap: break-word;
     word-break: break-word;
     font-weight: 400;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    padding: 8px;
+    border-radius: 6px;
+}
+
+.feedback-section .message-content:hover {
+    background-color: rgba(59, 130, 246, 0.1);
 }
 
 /* 回覆功能樣式 */
