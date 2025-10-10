@@ -39,9 +39,10 @@
     <div class="container">
         <div class="header-row">
             <h1>📘<span>布可星球查詢</span></h1>
-            <button class="header-flash-btn" id="flashBtnHeader" disabled>
-                <span id="flashIconHeader">🔦手電筒</span>
-            </button>
+            <div class="flash-button-container">
+                <button class="flash-off-btn" id="flashOffBtn" disabled>🔦手電筒</button>
+                <button class="flash-on-btn" id="flashOnBtn" disabled style="display: none;">�關閉</button>
+            </div>
         </div>
         <p class="subtitle">掃描書本條碼，判別是否為布可星球選書。</p>
 
@@ -69,23 +70,6 @@
             ✅ 掃描成功！
         </div>
 
-        <!-- 測試按鈕 (開發用，可隱藏) -->
-        <button id="testSuccessBtn" style="position: fixed; 
-                       bottom: 20px; 
-                       right: 20px; 
-                       z-index: 10000; 
-                       background: #059669; 
-                       color: white; 
-                       border: none; 
-                       padding: 10px 12px; 
-                       border-radius: 8px; 
-                       font-size: 12px;
-                       font-weight: 500;
-                       cursor: pointer;
-                       box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
-            📚 測試布可選書
-        </button>
-
     </div>
 
     <canvas id="processingCanvas" class="hidden"></canvas>
@@ -97,8 +81,8 @@
             const elements = {
                 startBtn: document.getElementById('startBtn'),
                 stopBtn: document.getElementById('stopBtn'),
-                flashBtnHeader: document.getElementById('flashBtnHeader'),
-                flashIconHeader: document.getElementById('flashIconHeader'),
+                flashOffBtn: document.getElementById('flashOffBtn'),
+                flashOnBtn: document.getElementById('flashOnBtn'),
                 preview: document.getElementById('preview'),
                 roiOverlay: document.getElementById('roiOverlay'),
                 engineBadge: document.getElementById('engineBadge'),
@@ -956,13 +940,17 @@
 
                     const capabilities = state.track.getCapabilities ? state.track.getCapabilities() : {};
                     if (capabilities && capabilities.torch) {
-                        elements.flashBtnHeader.disabled = false;
-                        elements.flashBtnHeader.classList.remove('flash-on');
-                        elements.flashIconHeader.textContent = '🔦手電筒';
+                        elements.flashOffBtn.disabled = false;
+                        elements.flashOnBtn.disabled = false;
+                        // 預設顯示關閉狀態按鈕
+                        elements.flashOffBtn.style.display = 'block';
+                        elements.flashOnBtn.style.display = 'none';
+                        state.flashOn = false;
                     } else {
-                        elements.flashBtnHeader.disabled = true;
-                        elements.flashBtnHeader.classList.remove('flash-on');
-                        elements.flashIconHeader.textContent = '🔦手電筒';
+                        elements.flashOffBtn.disabled = true;
+                        elements.flashOnBtn.disabled = true;
+                        elements.flashOffBtn.style.display = 'block';
+                        elements.flashOnBtn.style.display = 'none';
                     }
 
                     state.flashOn = false;
@@ -1010,9 +998,10 @@
                 elements.engineStatus.textContent = '已停止';
                 elements.startBtn.style.display = 'inline-flex';
                 elements.stopBtn.style.display = 'none';
-                elements.flashBtnHeader.disabled = true;
-                elements.flashBtnHeader.classList.remove('flash-on');
-                elements.flashIconHeader.textContent = '🔦手電筒';
+                elements.flashOffBtn.disabled = true;
+                elements.flashOnBtn.disabled = true;
+                elements.flashOffBtn.style.display = 'block';
+                elements.flashOnBtn.style.display = 'none';
                 state.flashOn = false;
                 updateCameraStatusText();
                 if (resetStatsToo) {
@@ -1020,21 +1009,39 @@
                 }
             }
 
-            async function toggleFlash() {
+            async function turnOnFlash() {
                 if (!state.track) return;
                 const capabilities = state.track.getCapabilities ? state.track.getCapabilities() : {};
                 if (!capabilities || !capabilities.torch) {
-                    elements.flashIconHeader.textContent = '不支援手電筒';
-                    elements.flashBtnHeader.disabled = true;
                     return;
                 }
-                state.flashOn = !state.flashOn;
+
                 try {
-                    await state.track.applyConstraints({ advanced: [{ torch: state.flashOn }] });
-                    elements.flashIconHeader.textContent = state.flashOn ? '💡關閉手電筒' : '🔦手電筒';
-                    elements.flashBtnHeader.classList.toggle('flash-on', state.flashOn);
+                    await state.track.applyConstraints({ advanced: [{ torch: true }] });
+                    state.flashOn = true;
+                    // 即時切換按鈕顯示
+                    elements.flashOffBtn.style.display = 'none';
+                    elements.flashOnBtn.style.display = 'block';
                 } catch (error) {
-                    log(`手電筒切換失敗：${error.message}`);
+                    log(`手電筒開啟失敗：${error.message}`);
+                }
+            }
+
+            async function turnOffFlash() {
+                if (!state.track) return;
+                const capabilities = state.track.getCapabilities ? state.track.getCapabilities() : {};
+                if (!capabilities || !capabilities.torch) {
+                    return;
+                }
+
+                try {
+                    await state.track.applyConstraints({ advanced: [{ torch: false }] });
+                    state.flashOn = false;
+                    // 即時切換按鈕顯示
+                    elements.flashOffBtn.style.display = 'block';
+                    elements.flashOnBtn.style.display = 'none';
+                } catch (error) {
+                    log(`手電筒關閉失敗：${error.message}`);
                 }
             }
 
@@ -1050,52 +1057,8 @@
             function bindEvents() {
                 elements.startBtn.addEventListener('click', startScanner);
                 elements.stopBtn.addEventListener('click', () => stopScanner(false));
-                elements.flashBtnHeader.addEventListener('click', toggleFlash);
-
-                // 測試按鈕事件
-                const testSuccessBtn = document.getElementById('testSuccessBtn');
-                if (testSuccessBtn) {
-                    testSuccessBtn.addEventListener('click', () => {
-                        log('📚 手動測試布可星球選書成功掃描');
-
-                        // 模擬一個成功的布可星球書籍掃描結果
-                        const mockMatch = {
-                            found: {
-                                書名: "小王子",
-                                ISBN: "9789571234567",
-                                適合對象: "6-12歲"
-                            },
-                            matchedCode: "9789571234567",
-                            original: "9789571234567"
-                        };
-
-                        // 更新統計
-                        state.stats.valid++;
-                        state.stats.success++;
-                        updateStatsDisplay();
-
-                        // 先顯示 Loading 畫面
-                        showLoadingCard();
-
-                        // 0.7秒後顯示實際結果
-                        setTimeout(() => {
-                            // 顯示成功結果（包含動畫）
-                            updateResultCardForMatch(mockMatch);
-
-                            // 顯示成功彈窗
-                            showSuccessPopover();
-                        }, 700);
-
-                        // 更新引擎狀態
-                        elements.engineStatus.textContent = '測試引擎 @ 模擬掃描';
-                        updateEngineBadge('測試成功', true);
-
-                        // 2秒後重置引擎狀態
-                        setTimeout(() => {
-                            updateEngineBadge('待命中...');
-                        }, 2000);
-                    });
-                }
+                elements.flashOffBtn.addEventListener('click', turnOnFlash);
+                elements.flashOnBtn.addEventListener('click', turnOffFlash);
 
                 window.addEventListener('resize', updateRoiOverlay);
                 document.addEventListener('visibilitychange', () => {

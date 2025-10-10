@@ -65,84 +65,7 @@ h1 span {
     text-align: center;
 }
 
-.header-flash-btn {
-    padding: 12px 16px;
-    border: none;
-    border-radius: 12px;
-    background: linear-gradient(135deg, var(--primary-light), var(--primary-dark));
-    color: var(--text-primary);
-    font-weight: 500;
-    cursor: pointer;
-    font-size: 16px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(12px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2),
-        0 2px 8px rgba(37, 99, 235, 0.15);
-    overflow: hidden;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-    height: 40px;
-    min-width: 144px;
-    border-radius: 6px;
-    position: absolute;
-    right: 0;
-}
-
-.header-flash-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-    filter: grayscale(0.3);
-}
-
-.header-flash-btn:hover:not(:disabled) {
-    transform: translateY(-2px) scale(1.05);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3),
-        0 3px 12px rgba(37, 99, 235, 0.2);
-}
-
-.header-flash-btn:active:not(:disabled) {
-    transform: translateY(0) scale(0.98);
-    transition: all 0.05s ease;
-}
-
-/* 手電筒按鈕基礎樣式 - 確保即時切換 */
-.header-flash-btn {
-    transition: none !important;
-    /* 完全移除過渡效果，確保即時切換 */
-}
-
-/* 按下時的即時反饋 */
-.header-flash-btn:active:not(:disabled) {
-    transform: scale(0.95) !important;
-    transition: none !important; /* 確保按下反饋是即時的 */
-}
-
-/* 手電筒按鈕開啟狀態的文字顏色 */
-.header-flash-btn.flash-on #flashIconHeader {
-    color: #fff !important;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-/* 確保手電筒按鈕狀態切換是即時的 */
-.header-flash-btn, 
-.header-flash-btn * {
-    will-change: auto; /* 移除 will-change 以避免合成層問題 */
-}
-
-/* 手電筒按鈕的觸控優化 */
-.header-flash-btn {
-    touch-action: manipulation; /* 移除觸控延遲 */
-    user-select: none; /* 防止文字選取 */
-}
-
-/* 手電筒按鈕 mousedown 狀態 */
-.header-flash-btn:active {
-    outline: none;
-}
+/* 舊樣式已移除，使用新的雙按鈕設計 */
 
 /* 優化所有按鈕的響應性 */
 .reply-btn, .reply-cancel-btn, .reply-submit-btn, .feedback-btn {
@@ -199,6 +122,9 @@ h1 span {
     position: absolute;
     right: 0;
     top: 0;
+    user-select: none;
+    touch-action: manipulation;
+    will-change: auto;
 }
 
 /* 手電筒關閉按鈕（藍色） */
@@ -216,6 +142,20 @@ h1 span {
 .flash-on-btn:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+}
+
+/* 按鈕按下時的即時視覺反饋 */
+.flash-off-btn:active:not(:disabled),
+.flash-on-btn:active:not(:disabled) {
+    transform: scale(0.95) !important;
+    transition: none !important;
+}
+
+/* 確保按鈕hover效果不會影響性能 */
+.flash-off-btn:hover:not(:disabled),
+.flash-on-btn:hover:not(:disabled) {
+    opacity: 0.9;
+    transition: none !important;
 }
 
 @keyframes header-flash-pulse {
@@ -752,10 +692,10 @@ video#preview {
         gap: 12px;
     }
 
-    .header-flash-btn {
-        padding: 10px 12px;
-        min-width: 60px;
-        height: 36px;
+    .flash-off-btn,
+    .flash-on-btn {
+        width: 90px;
+        height: 32px;
         font-size: 12px;
     }
 
@@ -818,10 +758,10 @@ video#preview {
         gap: 8px;
     }
 
-    .header-flash-btn {
-        padding: 8px 10px;
-        min-width: 88px;
-        height: 32px;
+    .flash-off-btn,
+    .flash-on-btn {
+        width: 80px;
+        height: 30px;
         font-size: 11px;
     }
 
