@@ -1,0 +1,44 @@
+{
+  "roi": {
+    "enabled": true,
+    "widthRatio": 0.78,
+    "heightRatio": 0.42
+  },
+  "processing": {
+    "contrast": 1.35,
+    "brightness": 1.05,
+    "gamma": 0.9,
+    "denoise": true,
+    "sharpen": true
+  },
+  "detection": {
+    "allowRotation": true,
+    "allowSlices": true,
+    "useBarcodeDetector": true,
+    "useZxing": true,
+    "intervalMs": 120,
+    "rotationAngles": [-12, -6, 6, 12],
+    "slices": [
+      { "label": "中心", "topRatio": 0.25, "heightRatio": 0.5 },
+      { "label": "上方", "topRatio": 0.05, "heightRatio": 0.45 },
+      { "label": "下方", "topRatio": 0.5, "heightRatio": 0.45 }
+    ]
+  },
+  "performance": {
+    "logSize": 120,
+    "maxCanvasWidth": 1280,
+    "recentCodeHistorySize": 12
+  },
+  "camera": {
+    "facingMode": "environment",
+    "idealWidth": 1920,
+    "idealHeight": 1080,
+    "minWidth": 640,
+    "minHeight": 480
+  },
+  "ui": {
+    "loadingDelay": 700,
+    "popoverDuration": 1500,
+    "fadeOutDelay": 300
+  }
+}

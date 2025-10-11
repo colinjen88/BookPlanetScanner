@@ -1,0 +1,60 @@
+# 依賴和虛擬環境
+.venv/
+venv/
+env/
+ENV/
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE 和編輯器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 作業系統生成檔案
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# 暫存和備份檔案
+*.tmp
+*.temp
+*.bak
+*.backup
+*_backup.*
+*_old.*
+
+# 日誌檔案
+*.log
+logs/
+
+# 編譯和建置產物
+dist/
+build/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# 測試和覆蓋率
+.coverage
+.pytest_cache/
+.tox/
+htmlcov/
+
+# 專案特定的暫存檔案
+project_inventory.csv
+*.cache
+
+# 密鑰和敏感資訊 (保留範例檔案)
+# myapikey.json  # 已有實際檔案，不排除
+
+# 大型資料檔案 (超過 100MB 考慮使用 Git LFS)
+# *.zip
+# *.tar.gz
+# *.7z

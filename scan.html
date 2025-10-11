@@ -25,7 +25,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script src="https://unpkg.com/@zxing/browser@latest"></script>
     <script src="https://code.iconify.design/3/3.1.1/iconify.min.js"></script>
-    <link rel="stylesheet" href="scan.css?3">
+    <link rel="stylesheet" href="assets/css/scan.css?3">
 </head>
 
 <body>
@@ -160,7 +160,27 @@
 
                 // 快取和日誌
                 lastCodes: [],
-                logSize: 120
+                logSize: 120,
+
+                // 相機設定（將被外部設定覆蓋）
+                cameraConfig: {
+                    facingMode: 'environment',
+                    idealWidth: 1920,
+                    idealHeight: 1080,
+                    minWidth: 640,
+                    minHeight: 480
+                },
+
+                // UI 設定（將被外部設定覆蓋）
+                uiConfig: {
+                    loadingDelay: 700,
+                    popoverDuration: 1500,
+                    fadeOutDelay: 300
+                },
+
+                // 效能設定
+                maxCanvasWidth: 1280,
+                recentCodeHistorySize: 12
             };
 
             // === 常數定義 ===
@@ -224,12 +244,52 @@
             }
 
             /**
+             * 載入掃描設定檔案
+             * @returns {Promise<void>}
+             */
+            async function loadScanConfig() {
+                try {
+                    log('正在初始化掃描設定...');
+                    const response = await fetch('config/scan_config.json');
+                    const config = await response.json();
+
+                    // 使用外部設定覆蓋預設值
+                    if (config.roi) {
+                        Object.assign(state.roi, config.roi);
+                    }
+                    if (config.processing) {
+                        Object.assign(state.processing, config.processing);
+                    }
+                    if (config.detection) {
+                        Object.assign(state.detection, config.detection);
+                    }
+                    if (config.performance) {
+                        if (config.performance.logSize) state.logSize = config.performance.logSize;
+                        if (config.performance.maxCanvasWidth) state.maxCanvasWidth = config.performance.maxCanvasWidth;
+                        if (config.performance.recentCodeHistorySize) state.recentCodeHistorySize = config.performance.recentCodeHistorySize;
+                    }
+                    if (config.camera) {
+                        state.cameraConfig = config.camera;
+                    }
+                    if (config.ui) {
+                        state.uiConfig = config.ui;
+                    }
+
+                    log('✅ 掃描設定載入成功');
+                    log(`ROI: ${state.roi.widthRatio}×${state.roi.heightRatio}, 處理: 對比度${state.processing.contrast}, 檢測間隔: ${state.detection.intervalMs}ms`);
+                } catch (error) {
+                    log(`⚠️ 掃描設定載入失敗，使用預設值: ${error.message}`);
+                    // 如果載入失敗，保持使用程式碼中的預設值
+                }
+            }
+
+            /**
              * 非同步載入書籍清單資料
              * @returns {Promise<void>}
              */
             async function loadBookList() {
                 try {
-                    const response = await fetch('books_list.json');
+                    const response = await fetch('data/books_list.json');
                     state.bookList = await response.json();
 
                     // 更新 UI 顯示載入結果
@@ -245,7 +305,7 @@
                     }));
                 } catch (error) {
                     elements.resultCard.classList.add('error');
-                    elements.resultCard.textContent = '❌ 書單載入失敗，請確認 books_list.json 是否存在。';
+                    elements.resultCard.textContent = '❌ 書單載入失敗，請確認 data/books_list.json 是否存在。';
                     log(`書單載入失敗：${error.message}`);
 
                     // 載入失敗時也觸發事件
@@ -330,7 +390,7 @@
 
             function pushRecentCode(code) {
                 state.lastCodes.push(code);
-                if (state.lastCodes.length > 12) state.lastCodes.shift();
+                if (state.lastCodes.length > state.recentCodeHistorySize) state.lastCodes.shift();
             }
 
             function wasRecentlySeen(code) {
@@ -797,7 +857,7 @@
                     }, 100);
                 });
 
-                // 1.5秒後淡出
+                // 延遲後淡出（使用設定檔案中的時間）
                 setTimeout(() => {
                     log('⏰ 開始淡出動畫');
                     popover.classList.add('fade-out');
@@ -806,8 +866,8 @@
                         popover.classList.remove('show', 'fade-out');
                         popover.style.position = 'absolute'; // 恢復原始定位
                         popover.style.display = 'none'; // 隱藏元素
-                    }, 300);
-                }, 1500);
+                    }, state.uiConfig.fadeOutDelay);
+                }, state.uiConfig.popoverDuration);
             }
 
             async function processFrame() {
@@ -819,7 +879,7 @@
                 state.lastDetectionAt = now;
 
                 const roi = computeRoi(video.videoWidth, video.videoHeight);
-                const targetWidth = Math.min(1280, Math.round(roi.sw));
+                const targetWidth = Math.min(state.maxCanvasWidth, Math.round(roi.sw));
                 const targetHeight = Math.round(targetWidth * (roi.sh / roi.sw));
                 processingCanvas.width = targetWidth;
                 processingCanvas.height = targetHeight;
@@ -882,7 +942,7 @@
                 // 先顯示 Loading 畫面
                 showLoadingCard();
 
-                // 0.7秒後顯示實際結果
+                // 延遲顯示實際結果（使用設定檔案中的延遲時間）
                 setTimeout(() => {
                     updateResultCardForMatch(match);
 
@@ -898,7 +958,7 @@
                     // 顯示成功popover
                     showSuccessPopover();
                     stopScanner(false);
-                }, 700);
+                }, state.uiConfig.loadingDelay);
             }
 
             async function startScanner() {
@@ -914,9 +974,9 @@
                     try {
                         state.stream = await navigator.mediaDevices.getUserMedia({
                             video: {
-                                facingMode: 'environment',
-                                width: { ideal: 1920, min: 640 },
-                                height: { ideal: 1080, min: 480 }
+                                facingMode: state.cameraConfig.facingMode,
+                                width: { ideal: state.cameraConfig.idealWidth, min: state.cameraConfig.minWidth },
+                                height: { ideal: state.cameraConfig.idealHeight, min: state.cameraConfig.minHeight }
                             },
                             audio: false
                         });
@@ -924,7 +984,7 @@
                         // 如果失敗，嘗試更基本的設定
                         log('嘗試基本攝影機設定...');
                         state.stream = await navigator.mediaDevices.getUserMedia({
-                            video: { facingMode: 'environment' },
+                            video: { facingMode: state.cameraConfig.facingMode },
                             audio: false
                         });
                     }
@@ -1001,7 +1061,6 @@
                 elements.engineStatus.textContent = '已停止';
                 elements.startBtn.style.display = 'inline-flex';
                 elements.scannerControls.style.display = 'none';
-                elements.stopBtn.style.display = 'none';
                 elements.flashOffBtn.disabled = true;
                 elements.flashOnBtn.disabled = true;
                 elements.flashOffBtn.style.display = 'none';
@@ -1743,7 +1802,10 @@
             }
 
             // 等待 DOM 完全載入
-            document.addEventListener('DOMContentLoaded', () => {
+            document.addEventListener('DOMContentLoaded', async () => {
+                // 首先載入設定檔案
+                await loadScanConfig();
+
                 initDetectors();
                 bindEvents();
                 loadBookList();
@@ -1927,7 +1989,7 @@
                 setTimeout(() => {
                     if (!checkBookList()) {
                         // 如果還是沒有數據，嘗試直接載入
-                        fetch('books_list.json')
+                        fetch('data/books_list.json')
                             .then(response => response.json())
                             .then(bookList => {
                                 document.getElementById('bookCount').textContent = bookList.length.toLocaleString();
