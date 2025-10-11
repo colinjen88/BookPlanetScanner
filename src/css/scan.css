@@ -726,6 +726,30 @@ video#preview {
     transition: all 0.4s ease-out;
 }
 
+/* 成功時在結果卡片放置淡淡背景圖（20% 透明，不遮擋內容） */
+.result-card.has-bg {
+    position: relative;
+    isolation: isolate; /* 建立新的 stacking context，確保 ::after 在內容底下 */
+}
+
+.result-card.has-bg > * {
+    position: relative;
+    z-index: 1; /* 讓內容層級在 ::after 之上 */
+}
+
+.result-card.has-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: var(--result-bg, url('../img/success-bg.png'));
+    background-repeat: no-repeat;
+    background-position: right 12px bottom 12px;
+    background-size: clamp(120px, 25%, 220px) auto;
+    opacity: 0.2; /* 20% 透明度 */
+    z-index: 0;
+    pointer-events: none; /* 不攔截任何互動 */
+}
+
 /* Loading 卡片樣式 */
 .loading-card {
     text-align: center;

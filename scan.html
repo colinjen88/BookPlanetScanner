@@ -25,7 +25,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script src="https://unpkg.com/@zxing/browser@latest"></script>
     <script src="https://code.iconify.design/3/3.1.1/iconify.min.js"></script>
-    <link rel="stylesheet" href="src/css/scan.css?6">
+    <link rel="stylesheet" href="src/css/scan.css?7">
 </head>
 
 <body>
@@ -92,7 +92,8 @@
                 engineStatus: document.getElementById('engineStatus'),
                 resultCard: document.getElementById('resultCard'),
                 statusBoard: document.getElementById('statusBoard'),
-                successPopover: document.getElementById('successPopover')
+                successPopover: document.getElementById('successPopover'),
+                appVersion: document.querySelector('.app-version')
             };
 
             // === Canvas 元素和上下文 ===
@@ -180,7 +181,12 @@
 
                 // 效能設定
                 maxCanvasWidth: 1280,
-                recentCodeHistorySize: 12
+                recentCodeHistorySize: 12,
+
+                // UI/操作防呆旗標
+                isStarting: false,
+                isStopping: false,
+                flashBusy: false
             };
 
             // === 常數定義 ===
@@ -509,6 +515,9 @@
              */
             function showLoadingCard() {
                 elements.resultCard.classList.remove('error', 'success');
+                // 清除成功背景圖（避免殘留）
+                elements.resultCard.classList.remove('has-bg');
+                elements.resultCard.style.removeProperty('--result-bg');
                 elements.resultCard.innerHTML = `
                     <div class="loading-card">
                         <div class="loading-spinner">
@@ -526,10 +535,20 @@
                     // 顯示成功匹配結果
                     elements.resultCard.classList.remove('error');
                     elements.resultCard.classList.add('success');
+                    // 套用背景圖（20% 透明，在 CSS 控制），嘗試多個常見路徑，優先使用 bg.jpg
+                    setResultCardBg([
+                        'src/img/bg.jpg',
+                        'bg.jpg',
+                        'src/bg.jpg',
+                        'images/bg.jpg',
+                        'assets/bg.jpg',
+                        // 後備：先前的預設圖
+                        'src/img/success-bg.png'
+                    ]);
                     elements.resultCard.innerHTML = `
                         <div class="success-title">
                             <span class="success-icon">🎉</span>
-                            找到『布可星球選書』
+                            恭喜找到『布可星球選書』
                         </div>
                         <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">
                             ${match.found.書名}
@@ -547,6 +566,9 @@
                 } else {
                     // 顯示未找到的結果
                     elements.resultCard.classList.remove('success');
+                    // 未匹配時移除任何背景圖
+                    elements.resultCard.classList.remove('has-bg');
+                    elements.resultCard.style.removeProperty('--result-bg');
                     elements.resultCard.classList.add('error');
                     elements.resultCard.innerHTML = `
                         <div class="error-title">
@@ -566,6 +588,60 @@
                         </div>
                     `;
                 }
+            }
+
+            // 嘗試載入結果卡背景圖，找到可用路徑才套用
+            function setResultCardBg(candidates) {
+                if (!Array.isArray(candidates) || candidates.length === 0) return;
+                let idx = 0;
+                const tryNext = () => {
+                    if (idx >= candidates.length) {
+                        // 全部失敗就不顯示背景
+                        elements.resultCard.classList.remove('has-bg');
+                        elements.resultCard.style.removeProperty('--result-bg');
+                        return;
+                    }
+                    const url = candidates[idx++];
+                    const img = new Image();
+                    img.onload = () => {
+                        const abs = new URL(url, document.baseURI).href;
+                        elements.resultCard.style.setProperty('--result-bg', `url('${abs}')`);
+                        elements.resultCard.classList.add('has-bg');
+                    };
+                    img.onerror = tryNext;
+                    img.src = url;
+                };
+                tryNext();
+            }
+
+            // 隱藏測試：點擊版本號，模擬「找到選書」畫面
+            function triggerTestSuccessUI() {
+                // 減少干擾：暫停掃描
+                try { stopScanner(false); } catch (e) { }
+                // 標記測試模式，避免計次
+                window.__TEST_SUCCESS = true;
+
+                // 若有書單，取第一本當做示例，否則使用假資料
+                const sample = (state.bookList && state.bookList.length > 0) ? state.bookList[0] : {
+                    書名: '測試用 布可選書',
+                    ISBN: '9781234567890',
+                    適合對象: '中高年級'
+                };
+                const match = {
+                    found: sample,
+                    matchedCode: (sample.ISBN || '9781234567890').toString(),
+                    original: 'TEST'
+                };
+
+                // 模擬真實流程：先 Loading 再顯示成功
+                showLoadingCard();
+                updateEngineBadge('測試模式', true);
+                elements.engineStatus.textContent = '測試模式';
+
+                setTimeout(() => {
+                    updateResultCardForMatch(match);
+                    showSuccessPopover();
+                }, state.uiConfig.loadingDelay);
             }
 
             // === 條碼處理功能 ===
@@ -962,7 +1038,10 @@
             }
 
             async function startScanner() {
-                if (state.running) return;
+                if (state.running || state.isStarting || state.isStopping) return;
+                state.isStarting = true;
+                // 立即防重入與避免連點
+                elements.startBtn.disabled = true;
 
                 try {
                     resetStats();
@@ -1018,6 +1097,8 @@
 
                     state.flashOn = false;
                     state.running = true;
+                    state.isStarting = false;
+                    elements.startBtn.disabled = false;
                     elements.resultCard.classList.remove('error', 'success');
                     elements.resultCard.textContent = '掃描中，請將條碼置於畫面中央並保持穩定。';
                     elements.engineStatus.textContent = '掃描中';
@@ -1042,10 +1123,18 @@
 
                     elements.resultCard.textContent = errorMessage;
                     stopScanner(true);
+                } finally {
+                    // 若未成功進入 running 狀態，解除啟動鎖並恢復按鈕
+                    if (!state.running) {
+                        state.isStarting = false;
+                        elements.startBtn.disabled = false;
+                    }
                 }
             }
 
             function stopScanner(resetStatsToo = true) {
+                if (state.isStopping) return;
+                state.isStopping = true;
                 state.running = false;
                 state.detectionBusy = false;
                 if (state.track) {
@@ -1079,6 +1168,10 @@
                 if (resetStatsToo) {
                     resetStats();
                 }
+                // 停止流程完成，解除停止鎖
+                state.isStopping = false;
+                // 確保可再次啟動
+                elements.startBtn.disabled = false;
             }
 
             /**
@@ -1087,9 +1180,15 @@
              * 第二步：執行硬體操作（可能有延遲）
              */
             async function turnOnFlash() {
-                if (!state.track) return;
+                if (!state.track || state.flashBusy) return;
+                state.flashBusy = true;
+                elements.flashOffBtn.disabled = true;
+                elements.flashOnBtn.disabled = true;
                 const capabilities = state.track.getCapabilities ? state.track.getCapabilities() : {};
                 if (!capabilities || !capabilities.torch) {
+                    state.flashBusy = false;
+                    elements.flashOffBtn.disabled = false;
+                    elements.flashOnBtn.disabled = false;
                     return;
                 }
 
@@ -1107,6 +1206,10 @@
                     elements.flashOnBtn.style.display = 'none';
                     state.flashOn = false;
                     log(`手電筒開啟失敗：${error.message}`);
+                } finally {
+                    state.flashBusy = false;
+                    elements.flashOffBtn.disabled = false;
+                    elements.flashOnBtn.disabled = false;
                 }
             }
 
@@ -1116,9 +1219,15 @@
              * 第二步：執行硬體操作（可能有延遲）
              */
             async function turnOffFlash() {
-                if (!state.track) return;
+                if (!state.track || state.flashBusy) return;
+                state.flashBusy = true;
+                elements.flashOffBtn.disabled = true;
+                elements.flashOnBtn.disabled = true;
                 const capabilities = state.track.getCapabilities ? state.track.getCapabilities() : {};
                 if (!capabilities || !capabilities.torch) {
+                    state.flashBusy = false;
+                    elements.flashOffBtn.disabled = false;
+                    elements.flashOnBtn.disabled = false;
                     return;
                 }
 
@@ -1136,6 +1245,10 @@
                     elements.flashOnBtn.style.display = 'block';
                     state.flashOn = true;
                     log(`手電筒關閉失敗：${error.message}`);
+                } finally {
+                    state.flashBusy = false;
+                    elements.flashOffBtn.disabled = false;
+                    elements.flashOnBtn.disabled = false;
                 }
             }
 
@@ -1149,7 +1262,11 @@
             }
 
             function bindEvents() {
-                elements.startBtn.addEventListener('click', startScanner);
+                elements.startBtn.addEventListener('click', () => {
+                    // 防止快速連點開始
+                    if (state.isStarting || state.running) return;
+                    startScanner();
+                });
                 elements.stopBtn.addEventListener('click', () => {
                     // 先立即隱藏並停用「停止掃描」按鈕，避免重複點擊
                     elements.stopBtn.style.display = 'none';
@@ -1160,10 +1277,24 @@
                         flashOnNewBtn.style.display = 'none';
                     }
                     elements.flashOnBtn.style.display = 'none';
-                    stopScanner(false);
+                    // 防止快速重複停止
+                    if (!state.isStopping) {
+                        stopScanner(false);
+                    }
                 });
                 elements.flashOffBtn.addEventListener('click', turnOnFlash);
                 elements.flashOnBtn.addEventListener('click', turnOffFlash);
+
+                // 將頁尾版本號作為隱藏測試按鈕（於綁定時重新查找，避免一開始抓不到）
+                const appVersionEl = elements.appVersion || document.querySelector('.app-version');
+                if (appVersionEl) {
+                    appVersionEl.style.cursor = 'pointer';
+                    appVersionEl.title = '';
+                    appVersionEl.addEventListener('click', (ev) => {
+                        ev.preventDefault();
+                        triggerTestSuccessUI();
+                    });
+                }
 
                 window.addEventListener('resize', updateRoiOverlay);
                 document.addEventListener('visibilitychange', () => {
@@ -1193,6 +1324,8 @@
                 function toggleFeedback() {
                     if (feedbackSection.style.display === 'none') {
                         feedbackSection.style.display = 'block';
+                        // 顯示留言區時暫停掃描，避免 CPU 佔用造成輸入遲滯
+                        try { stopScanner(false); } catch (e) { }
                         loadMessages();
                         initializeNickname();
                         // 滾動到頁面底部，顯示留言版
@@ -1768,6 +1901,20 @@
                     msgForm.addEventListener('submit', submitMessage);
                 }
 
+                // 改善輸入框點擊反應：一聚焦就暫停掃描，降低主執行緒負載
+                const nameInputEl = document.getElementById('name');
+                const contentInputEl = document.getElementById('content');
+                if (nameInputEl) {
+                    nameInputEl.addEventListener('focus', () => {
+                        try { stopScanner(false); } catch (e) { }
+                    });
+                }
+                if (contentInputEl) {
+                    contentInputEl.addEventListener('focus', () => {
+                        try { stopScanner(false); } catch (e) { }
+                    });
+                }
+
                 // 添加事件委托優化留言點擊性能
                 if (messagesDiv) {
                     messagesDiv.addEventListener('click', (event) => {
@@ -1938,48 +2085,56 @@
              * 載入並顯示統計資料（從外部檔案或本地儲存）
              */
             async function loadStats() {
+                let remoteVisitBase = 0;
                 try {
                     // 嘗試從外部檔案載入統計資料
                     const response = await fetch('./data/stats.json');
                     if (response.ok) {
                         const stats = await response.json();
-                        document.getElementById('visitCount').textContent = stats.visitCount.toLocaleString();
-                        // 你可以在這裡載入其他統計資料
-                        log('✅ 從外部檔案載入統計資料成功');
-                        return;
+                        remoteVisitBase = parseInt(stats.visitCount || 0) || 0;
+                        console.log('✅ 從外部檔案載入統計資料成功');
                     }
                 } catch (error) {
-                    log('ℹ️ 外部檔案載入失敗，使用本地統計');
+                    console.log('ℹ️ 外部檔案載入失敗，使用本地統計');
                 }
 
-                // 如果外部檔案失敗，使用原來的本地儲存邏輯
-                updateVisitCountLocal();
+                // 使用遠端基準數（若有）+ 本地 15 分鐘冷卻累加
+                updateVisitCountLocal(remoteVisitBase);
             }
 
             /**
              * 獲取並顯示訪問次數（避免15分鐘內重複累計）- 本地版本
              */
-            function updateVisitCountLocal() {
+            function updateVisitCountLocal(baseCount = 0) {
                 const now = Date.now();
-                const lastVisitTime = localStorage.getItem(STORAGE_KEYS.lastVisit);
-                const visitCount = parseInt(localStorage.getItem(STORAGE_KEYS.visitCount) || 0);
+                const lastVisitTime = parseInt(localStorage.getItem(STORAGE_KEYS.lastVisit) || '0');
+                const localDeltaKey = 'bookScannerLocalDelta';
+                let localDelta = parseInt(localStorage.getItem(localDeltaKey) || '0');
 
-                // 檢查是否距離上次訪問已超過冷卻時間
-                if (!lastVisitTime || (now - parseInt(lastVisitTime)) > VISIT_COOLDOWN_MS) {
+                // 若提供遠端基準，使用本地增量機制；否則維持舊邏輯（相容）
+                if (baseCount > 0) {
+                    if (!lastVisitTime || (now - lastVisitTime) > VISIT_COOLDOWN_MS) {
+                        localDelta += 1;
+                        localStorage.setItem(localDeltaKey, localDelta);
+                        localStorage.setItem(STORAGE_KEYS.lastVisit, now.toString());
+                    }
+                    const effective = baseCount + localDelta;
+                    const el = document.getElementById('visitCount');
+                    if (el) el.textContent = effective.toLocaleString();
+                    return;
+                }
+
+                // 舊相容邏輯（沒有遠端基準時）
+                const visitCount = parseInt(localStorage.getItem(STORAGE_KEYS.visitCount) || '0');
+                if (!lastVisitTime || (now - lastVisitTime) > VISIT_COOLDOWN_MS) {
                     const newVisitCount = visitCount + 1;
                     localStorage.setItem(STORAGE_KEYS.visitCount, newVisitCount);
                     localStorage.setItem(STORAGE_KEYS.lastVisit, now.toString());
-
                     const element = document.getElementById('visitCount');
-                    if (element) {
-                        element.textContent = newVisitCount.toLocaleString();
-                    }
+                    if (element) element.textContent = newVisitCount.toLocaleString();
                 } else {
-                    // 冷卻時間內的訪問，不累加但顯示現有計數
                     const element = document.getElementById('visitCount');
-                    if (element) {
-                        element.textContent = visitCount.toLocaleString();
-                    }
+                    if (element) element.textContent = visitCount.toLocaleString();
                 }
             }
 
@@ -2033,6 +2188,11 @@
                         if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
                             const target = mutation.target;
                             if (target.classList.contains('success')) {
+                                // 測試模式不計數
+                                if (window.__TEST_SUCCESS) {
+                                    window.__TEST_SUCCESS = false;
+                                    return;
+                                }
                                 updateScanCount();
                             }
                         }
