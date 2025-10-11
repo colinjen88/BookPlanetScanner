@@ -25,7 +25,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script src="https://unpkg.com/@zxing/browser@latest"></script>
     <script src="https://code.iconify.design/3/3.1.1/iconify.min.js"></script>
-    <link rel="stylesheet" href="scan.css?2">
+    <link rel="stylesheet" href="scan.css?3">
 </head>
 
 <body>
@@ -43,12 +43,13 @@
         <p class="subtitle">掃描書本條碼，判別是否為布可星球選書。</p>
 
         <div class="button-row">
-            <div class="flash-controls">
-                <button class="flash-btn flash-off" id="flashOffNew" disabled>💡 開啟</button>
-                <button class="flash-btn flash-on" id="flashOnNew" disabled style="display: none;">💡 關閉</button>
-            </div>
             <button class="btn btn-main" id="startBtn">🚀 開始掃描條碼</button>
-            <button class="btn btn-main danger" id="stopBtn" disabled style="display: none;">⏹️ 停止</button>
+        </div>
+
+        <div class="scanner-controls" style="display: none;">
+            <button class="flash-btn flash-off" id="flashOffNew">💡開燈</button>
+            <button class="flash-btn flash-on" id="flashOnNew" style="display: none;">💡關燈</button>
+            <button class="btn btn-main danger" id="stopBtn">⏹️ 停止掃描</button>
         </div>
 
         <div class="video-shell" id="videoShell">
@@ -81,6 +82,7 @@
             const elements = {
                 startBtn: document.getElementById('startBtn'),
                 stopBtn: document.getElementById('stopBtn'),
+                scannerControls: document.querySelector('.scanner-controls'),
                 flashOffBtn: document.getElementById('flashOffNew'),
                 flashOnBtn: document.getElementById('flashOnNew'),
                 preview: document.getElementById('preview'),
@@ -935,21 +937,22 @@
                     updateRoiOverlay();
 
                     elements.startBtn.style.display = 'none';
-                    elements.stopBtn.style.display = 'inline-flex';
+                    elements.scannerControls.style.display = 'flex';
                     elements.stopBtn.disabled = false;
+                    elements.stopBtn.style.display = 'inline-block';
 
                     const capabilities = state.track.getCapabilities ? state.track.getCapabilities() : {};
                     if (capabilities && capabilities.torch) {
                         elements.flashOffBtn.disabled = false;
                         elements.flashOnBtn.disabled = false;
                         // 預設顯示關閉狀態按鈕
-                        elements.flashOffBtn.style.display = 'block';
+                        elements.flashOffBtn.style.display = 'inline-block';
                         elements.flashOnBtn.style.display = 'none';
                         state.flashOn = false;
                     } else {
                         elements.flashOffBtn.disabled = true;
                         elements.flashOnBtn.disabled = true;
-                        elements.flashOffBtn.style.display = 'block';
+                        elements.flashOffBtn.style.display = 'inline-block';
                         elements.flashOnBtn.style.display = 'none';
                     }
 
@@ -997,10 +1000,11 @@
                 updateEngineBadge('已停止');
                 elements.engineStatus.textContent = '已停止';
                 elements.startBtn.style.display = 'inline-flex';
+                elements.scannerControls.style.display = 'none';
                 elements.stopBtn.style.display = 'none';
                 elements.flashOffBtn.disabled = true;
                 elements.flashOnBtn.disabled = true;
-                elements.flashOffBtn.style.display = 'block';
+                elements.flashOffBtn.style.display = 'none';
                 elements.flashOnBtn.style.display = 'none';
                 state.flashOn = false;
                 updateCameraStatusText();
@@ -1023,7 +1027,7 @@
 
                 // 第一步：立即更新UI狀態（零延遲反應）
                 elements.flashOffBtn.style.display = 'none';
-                elements.flashOnBtn.style.display = 'block';
+                elements.flashOnBtn.style.display = 'inline-block';
                 state.flashOn = true;
 
                 // 第二步：執行硬體操作（可能有延遲）
@@ -1051,7 +1055,7 @@
                 }
 
                 // 第一步：立即更新UI狀態（零延遲反應）
-                elements.flashOffBtn.style.display = 'block';
+                elements.flashOffBtn.style.display = 'inline-block';
                 elements.flashOnBtn.style.display = 'none';
                 state.flashOn = false;
 

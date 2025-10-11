@@ -186,21 +186,27 @@ h1 span {
     display: flex;
     align-items: stretch;
     gap: 12px;
+}
+
+/* 掃描器控制區塊（手電筒 + 停止按鈕） */
+.scanner-controls {
+    display: flex !important;
+    align-items: stretch;
+    gap: 12px;
     margin-bottom: 24px;
 }
 
-/* 新的手電筒控制區塊 */
-.flash-controls {
-    flex: 0 0 25%;
-    position: relative;
-    order: -1; /* 確保在最左邊 */
-    height: 56px; /* 固定高度，防止佈局跳動 */
+.scanner-controls .flash-btn {
+    flex: 0 0 calc(25% - 6px); /* 1/4 寬度，減去 gap 的一半 */
 }
 
-/* 新的手電筒按鈕樣式 */
+.scanner-controls .btn {
+    flex: 0 0 calc(75% - 6px); /* 3/4 寬度，減去 gap 的一半 */
+}
+
+/* 手電筒按鈕樣式 - 簡化版本 */
 .flash-btn {
-    width: 100%;
-    height: 56px;
+    height: 60px;
     color: #fff;
     border: none;
     padding: 14px 20px;
@@ -211,21 +217,17 @@ h1 span {
     transition: none !important;
     animation: none !important;
     transform: none !important;
-    display: block;
+    display: inline-block;
     box-sizing: border-box;
     text-align: center;
     line-height: 1.4;
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
     user-select: none;
     touch-action: manipulation;
     will-change: auto;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2),
         inset 0 1px 0 rgba(255, 255, 255, 0.15);
     border: 2px solid rgba(255, 255, 255, 0.1);
+    width: 100%;
 }
 
 .flash-btn.flash-off {
@@ -289,8 +291,26 @@ button.btn {
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     letter-spacing: 0.02em;
     min-height: 60px;
+    height: 60px;
 }
-
+#stopBtn {
+    line-height: 32px;
+    font-size: 14px !important;
+    display: none;
+    height: 52px !important;
+    min-height: 52px !important;
+    padding: 0;
+}
+#flashOffNew {
+    height: 52px !important;
+    font-size: 14px;
+    display: none;
+}
+#flashOnNew {
+    height: 52px !important;
+    font-size: 14px;
+    display: none;
+}
 button.btn::before {
     content: '';
     position: absolute;
