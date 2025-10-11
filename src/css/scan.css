@@ -2045,3 +2045,37 @@ display: flex;
         font-size: 14px;
     }
 }
+
+    /* Audience chips (適合對象) */
+    .audience-list {
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        vertical-align: middle;
+    }
+
+    .audience-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        border: 1.5px solid currentColor;
+        background: transparent;
+        color: var(--text-primary); /* 對應類別會覆蓋為彩色 */
+        user-select: none;
+    }
+
+    /* Pastel, soft and bright palette */
+    .chip-sky   { color: #38bdf8; }
+    .chip-teal  { color: #14b8a6; }
+    .chip-lime  { color: #84cc16; }
+    .chip-amber { color: #f59e0b; }
+    .chip-orange{ color: #f97316; }
+    .chip-rose  { color: #fb7185; }
+    .chip-pink  { color: #f472b6; }
+    .chip-violet{ color: #8b5cf6; }
+    .chip-indigo{ color: #6366f1; }
+    .chip-slate { color: #94a3b8; }

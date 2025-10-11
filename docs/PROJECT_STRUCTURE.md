@@ -8,72 +8,87 @@
 
 ```
 布可星球條碼掃描器/
-├── 📄 scan.html              # 主要應用程式入口
-├── 📄 package.json           # 專案配置和依賴
-├── 📄 scan_backup.html       # HTML 備份檔案
-├── 📄 app.js                 # 應用程式入口腳本
-├── 📄 FIXES_SUMMARY.html     # 修復摘要報告
+├── 📄 scan.html                  # 單頁應用主入口
+├── 📄 package.json               # 專案配置與依賴（僅前端工具用途）
+├── 📄 FIXES_SUMMARY.html         # 修復摘要（自動/人工整理）
+├── 📄 CLEANUP_REPORT.md          # 清理報告
+├── 📄 FINAL_REORGANIZATION_REPORT.md # 最終重整報告
+├── 📄 REORGANIZATION_PLAN.md     # 重整計畫
+├── 📄 README.md                  # 專案總覽
+├── 🖼️ bg.jpg                      # 成功畫面背景圖（選用，存在時會疊加於結果卡）
 │
-├── 📂 assets/                # 靜態資源目錄
+├── 📂 src/                       # 前端資源（取代舊說明中的 assets/）
 │   ├── 📂 css/
-│   │   └── scan.css          # 主要樣式表
-│   ├── 📂 js/                # JavaScript 模組
-│   │   ├── app.js            # 主應用程式邏輯
-│   │   ├── data-manager.js   # 資料管理模組
-│   │   ├── feedback.js       # 回饋系統模組
-│   │   ├── ui-utils.js       # UI 工具函數
-│   │   └── scanner.js.broken # 舊版掃描模組（已棄用）
-│   └── Pinlocation.lottie    # 動畫資源
+│   │   └── scan.css              # 主要樣式表
+│   ├── 📂 js/
+│   │   ├── app.js                # 主應用邏輯與事件綁定
+│   │   ├── data-manager.js       # 資料載入/快取/匹配
+│   │   ├── feedback.js           # 留言板/回饋模組
+│   │   ├── ui-utils.js           # UI 輔助工具
+│   │   └── scanner.js.broken     # 舊版掃描模組（保留以供參考）
+│   └── Pinlocation.lottie        # Lottie 動畫資源
 │
-├── 📂 config/                # 配置檔案目錄
-│   └── scan_config.json      # 掃描器設定檔
+├── 📂 config/
+│   └── scan_config.json          # 掃描器設定檔
 │
-├── 📂 data/                  # 資料檔案目錄
-│   ├── books_list.json       # 布可星球選書清單
-│   ├── messages.json         # 留言板資料
-│   └── stats.json           # 統計資料
+├── 📂 data/                      # 靜態資料
+│   ├── books_list.json           # 布可星球選書清單
+│   ├── messages.json             # 留言板資料（本地保存）
+│   └── stats.json                # 統計資料（作為遠端基準）
 │
-├── 📂 docs/                  # 文檔目錄
-│   ├── README.md             # 專案說明文件
-│   ├── CONFIG_README.md      # 設定檔案說明
+├── 📂 scripts/                   # 數據處理與爬蟲工具
+│   ├── isbn_batch.py
+│   ├── isbn_continue.py
+│   ├── isbn_memory_optimized.py
+│   ├── isbn_selenium.py
+│   ├── memory_cleaner.py
+│   ├── cleanup_processes.bat
+│   └── myapikey.json             # API 金鑰（請妥善保護，勿對外公開）
+│
+├── 📂 tools/                     # 專案維運工具
+│   ├── cleanup.ps1
+│   ├── optimize.ps1
+│   ├── optimize.sh
+│   └── validate.ps1
+│
+├── 📂 docs/                      # 文件
+│   ├── PROJECT_STRUCTURE.md      # 本文件：專案結構
+│   ├── CONFIG_README.md          # 設定檔說明
 │   ├── CODE_OPTIMIZATION_REPORT.md # 程式碼優化報告
-│   └── DATA_MANAGEMENT.md    # 資料管理文檔
+│   ├── DATA_MANAGEMENT.md        # 資料管理
+│   ├── 📂 dev/
+│   │   ├── API_REFERENCE.md
+│   │   └── DEPLOYMENT_GUIDE.md
+│   ├── 📂 project/
+│   │   ├── CHANGELOG.md
+│   │   ├── PROJECT_COMPLETION_REPORT.md
+│   │   └── VERSION.md
+│   └── 📂 user/
+│       └── README.md
 │
-├── 📂 文件說明/              # 中文文檔目錄
-│   ├── 資料夾整理說明.md
-│   └── EXECUTION_LOG.md
+├── 📂 archive/                   # 歷史/備份/中繼資料
+│   ├── 📂 development/           # 內部開發紀錄
+│   │   ├── EXECUTION_LOG.md
+│   │   ├── 模組化架構說明.md
+│   │   └── 資料夾整理說明.md
+│   └── 📂 data/
+│       ├── 📂 original/          # 原始資料
+│       │   ├── list.csv
+│       │   └── csv_to_json.ps1
+│       └── 📂 progress/          # 生成/中繼資料
+│           ├── all_books_complete.json
+│           ├── en_books.json
+│           ├── zh_books_1_80.json
+│           ├── zh_books_81_160.json
+│           └── zh_books_161_242.json
 │
-├── 📂 爬蟲程式/              # 資料收集工具
-│   ├── isbn_batch.py         # 批次處理腳本
-│   ├── isbn_continue.py      # 續行處理腳本
-│   ├── isbn_memory_optimized.py # 記憶體優化版本
-│   ├── isbn_selenium.py      # Selenium 版本
-│   ├── memory_cleaner.py     # 記憶體清理工具
-│   ├── cleanup_processes.bat # 處理清理腳本
-│   └── myapikey.json        # API 金鑰配置
-│
-├── 📂 原始資料/              # 原始資料檔案
-│   ├── list.csv              # 原始書籍清單
-│   └── csv_to_json.ps1       # 資料轉換腳本
-│
-├── 📂 進度檔案/              # 處理進度檔案
-│   ├── all_books_complete.json
-│   ├── en_books.json
-│   ├── zh_books_1_80.json
-│   ├── zh_books_161_242.json
-│   └── zh_books_81_160.json
-│
-└── 📂 其它收/                # 其他檔案
-    ├── camera_test.html      # 相機測試頁面
-    ├── index.html           # 索引頁面
-    ├── scan_book.html       # 書籍掃描頁面
-    ├── scan_fast.html       # 快速掃描頁面
-    ├── scan_optimized.html  # 優化版掃描頁面
-    ├── scan_pro.html        # 專業版掃描頁面
-    ├── scan_simple.html     # 簡化版掃描頁面
-    ├── scan_u.html         # 用戶版掃描頁面
-    └── test.html           # 測試頁面
+├── 📂 .git/                      # Git 版本控管（自動生成）
+└── 📂 .venv/                     # Python 虛擬環境（若有）
 ```
+
+備註：
+- 舊版文件中提到的 assets/、scan_backup.html、各種 scan_*.html、index.html、camera_test.html 等檔案目前不在此版本庫中；請以本節列出的實際結構為準。
+- 成功畫面背景圖若需要，請將檔案命名為 bg.jpg 放在專案根目錄（已支援自動偵測與套用）。
 
 ## 🔧 核心功能模組
 
@@ -102,7 +117,7 @@
 
 ## ⚙️ 配置系統
 
-### 掃描器設定 (`config/scan_config.json`)
+### 掃描器設定（`config/scan_config.json`）
 ```json
 {
   "roi": {
@@ -192,6 +207,11 @@ npx live-server --port=8000
 - 更新 `data/books_list.json` 書籍清單
 - 檢查並清理 `data/messages.json` 留言資料
 - 備份重要配置檔案
+
+### 保持本文與專案同步
+- 本文件以實際版本庫為權威來源，若有新增/移除檔案，請同步更新本節「檔案結構」。
+- `archive/data/progress/` 內檔案多為生成/中繼資料，可能會隨工作流程變動；記錄其目錄用途即可，無需在此列出每個檔名。
+- `src/js/scanner.js.broken` 為歷史檔，僅供參考；未來可視情況移除或搬入 `archive/` 保存。
 
 ### 效能優化
 - 監控 `data/stats.json` 中的統計資料

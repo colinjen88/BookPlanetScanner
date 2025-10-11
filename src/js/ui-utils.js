@@ -62,7 +62,11 @@ class UIUtils {
                 <div>
                     <strong>書名：</strong> ${match.found.書名}<br>
                     <strong>ISBN：</strong> ${match.found.ISBN}<br>
-                    ${match.found.適合對象 ? `<strong>適合對象：</strong> ${match.found.適合對象}<br>` : ''}
+                                        ${match.found.適合對象 ? `<strong>適合對象：</strong> ${
+                                                (typeof window !== 'undefined' && window.renderAudienceChips)
+                                                    ? window.renderAudienceChips(match.found.適合對象)
+                                                    : match.found.適合對象
+                                        }<br>` : ''}
                     ${match.found.作者 ? `<strong>作者：</strong> ${match.found.作者}<br>` : ''}
                     ${match.found.出版社 ? `<strong>出版社：</strong> ${match.found.出版社}<br>` : ''}
                     ${match.found.分類 ? `<strong>分類：</strong> ${match.found.分類}<br>` : ''}

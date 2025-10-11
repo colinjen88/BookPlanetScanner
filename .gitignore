@@ -52,7 +52,8 @@ project_inventory.csv
 *.cache
 
 # 密鑰和敏感資訊 (保留範例檔案)
-# myapikey.json  # 已有實際檔案，不排除
+scripts/myapikey.json
+!scripts/myapikey.example.json
 
 # 大型資料檔案 (超過 100MB 考慮使用 Git LFS)
 # *.zip

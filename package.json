@@ -1,23 +1,17 @@
 {
-  "name": "book-scanner-feedback",
-  "version": "1.0.0",
-  "description": "布可星球條碼掃描器 with 留言板功能",
-  "main": "app.js",
+  "name": "book-scanner-static",
+  "version": "2.0.0",
+  "private": true,
+  "description": "布可星球條碼掃描器（純前端靜態站點）",
   "scripts": {
-    "start": "node app.js",
-    "dev": "nodemon app.js"
-  },
-  "dependencies": {
-    "express": "^4.18.2"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
+    "serve": "npx live-server --port=8000 --open=scan.html",
+    "tree": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\tools\\ls-tree.ps1"
   },
   "keywords": [
     "barcode",
     "scanner",
-    "feedback",
-    "book"
+    "book",
+    "static"
   ],
   "author": "Colin Jen",
   "license": "MIT"

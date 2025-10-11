@@ -9,7 +9,7 @@
 ### 統計資料格式 (stats.json)
 ```json
 {
-  "visitCount": 1250,        // 累積訪問次數
+  "visitCount": 001,        // 累積訪問次數
   "scanCount": 342,          // 掃描次數（目前由前端計算）
   "successCount": 89,        // 成功掃描次數（目前由前端計算）
   "lastUpdated": "2025-10-09T12:00:00.000Z"  // 最後更新時間

@@ -557,7 +557,8 @@
                             <strong>ISBN：</strong>${match.found.ISBN}
                         </div>
                         <div style="margin-bottom: 12px;">
-                            <strong>適合對象：</strong>${match.found.適合對象 || '未標示'}
+                            <strong>適合對象：</strong>
+                            ${renderAudienceChips(match.found.適合對象)}
                         </div>
                         <div style="font-size: 13px; color: var(--text-muted); padding-top: 8px; border-top: 1px solid rgba(16, 185, 129, 0.2);">
                             匹配條碼：${match.matchedCode}
@@ -612,6 +613,42 @@
                     img.src = url;
                 };
                 tryNext();
+            }
+
+            // 適合對象顏色標籤渲染
+            function renderAudienceChips(audienceRaw) {
+                if (!audienceRaw) return '<span class="audience-chip chip-slate">未標示</span>';
+                // 支援多種分隔符號：/、、，、空白
+                const parts = String(audienceRaw)
+                    .split(/[\/、，,\s]+/)
+                    .map(s => s.trim())
+                    .filter(Boolean);
+                if (parts.length === 0) return '<span class="audience-chip chip-slate">未標示</span>';
+                const chips = parts.map(p => {
+                    const cls = mapAudienceToChip(p);
+                    return `<span class="audience-chip ${cls}" title="${p}">${p}</span>`;
+                });
+                return `<span class="audience-list">${chips.join('')}</span>`;
+            }
+
+            function mapAudienceToChip(label) {
+                const l = (label || '').toString().toLowerCase();
+                // 常見中文分類
+                if (l.includes('幼兒') || l.includes('學齡前') || l.includes('低幼')) return 'chip-rose';
+                if (l.includes('低年') || l.includes('低年級')) return 'chip-amber';
+                if (l.includes('中年') || l.includes('中年級')) return 'chip-lime';
+                if (l.includes('高年') || l.includes('高年級')) return 'chip-teal';
+                if (l.includes('中高')) return 'chip-sky';
+                if (l.includes('國中') || l.includes('青少年') || l.includes('中學生')) return 'chip-indigo';
+                if (l.includes('高中')) return 'chip-violet';
+                if (l.includes('成人') || l.includes('教師') || l.includes('家長')) return 'chip-slate';
+
+                // 年齡區間（數字）
+                if (/\d{1,2}\s*[-~至]\s*\d{1,2}/.test(l)) return 'chip-sky';
+                if (/^\d{1,2}\+?$/.test(l)) return 'chip-sky';
+
+                // 預設
+                return 'chip-slate';
             }
 
             // 隱藏測試：點擊版本號，模擬「找到選書」畫面
@@ -1294,6 +1331,11 @@
                         ev.preventDefault();
                         triggerTestSuccessUI();
                     });
+                    // 隱藏管理：雙擊版本號打開管理面板
+                    appVersionEl.addEventListener('dblclick', (ev) => {
+                        ev.preventDefault();
+                        showAdminPanel();
+                    });
                 }
 
                 window.addEventListener('resize', updateRoiOverlay);
@@ -1310,6 +1352,74 @@
 
                 // 留言版事件
                 initFeedbackSystem();
+            }
+
+            // 簡易隱藏管理面板：清空留言板 / 清空累計訪問
+            function showAdminPanel() {
+                let panel = document.getElementById('adminPanel');
+                if (panel) {
+                    panel.style.display = 'block';
+                    return;
+                }
+                panel = document.createElement('div');
+                panel.id = 'adminPanel';
+                panel.style.position = 'fixed';
+                panel.style.right = '20px';
+                panel.style.bottom = '20px';
+                panel.style.zIndex = '10002';
+                panel.style.background = 'rgba(17,24,39,0.95)';
+                panel.style.border = '1px solid rgba(255,255,255,0.15)';
+                panel.style.boxShadow = '0 10px 30px rgba(0,0,0,0.4)';
+                panel.style.borderRadius = '12px';
+                panel.style.padding = '12px';
+                panel.style.minWidth = '220px';
+                panel.style.backdropFilter = 'blur(8px)';
+
+                panel.innerHTML = `
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
+                        <strong style="color:#e5e7eb;font-size:14px;">管理工具</strong>
+                        <button id="adminCloseBtn" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px;">✕</button>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <button id="btnClearMessages" style="padding:8px 10px;border:none;border-radius:8px;background:#374151;color:#e5e7eb;cursor:pointer;font-size:13px;text-align:left;">🗑️ 清空留言板</button>
+                        <button id="btnClearVisits" style="padding:8px 10px;border:none;border-radius:8px;background:#374151;color:#e5e7eb;cursor:pointer;font-size:13px;text-align:left;">♻️ 清空累計訪問</button>
+                    </div>
+                `;
+
+                document.body.appendChild(panel);
+
+                panel.querySelector('#adminCloseBtn').addEventListener('click', () => {
+                    panel.style.display = 'none';
+                });
+
+                panel.querySelector('#btnClearMessages').addEventListener('click', () => {
+                    if (window.clearAllMessages) {
+                        window.clearAllMessages();
+                    } else {
+                        try {
+                            localStorage.removeItem('bookPlanetMessages');
+                            localStorage.removeItem('bookPlanetReplies');
+                            const messagesDiv = document.getElementById('messages');
+                            if (messagesDiv) messagesDiv.innerHTML = '';
+                        } catch { }
+                    }
+                    alert('留言板已清空');
+                });
+
+                panel.querySelector('#btnClearVisits').addEventListener('click', () => {
+                    if (window.clearVisitStats) {
+                        window.clearVisitStats();
+                    } else {
+                        try {
+                            localStorage.removeItem('bookScannerVisitCount');
+                            localStorage.removeItem('bookScannerLastVisit');
+                            localStorage.removeItem('bookScannerLocalDelta');
+                            const el = document.getElementById('visitCount');
+                            if (el) el.textContent = '0';
+                        } catch { }
+                    }
+                    alert('累計訪問已清空');
+                });
             }
 
             // === 留言版功能 ===
@@ -1341,7 +1451,22 @@
                 }
 
                 // 載入留言（從外部檔案或本地儲存）
+                // 一次性遷移：首次載入自動清掉舊的本地留言/回覆，避免殘留
+                function performMessageStorageMigration() {
+                    try {
+                        const FLAG = 'bookPlanetMessagesCleared_20251012';
+                        if (!localStorage.getItem(FLAG)) {
+                            localStorage.removeItem('bookPlanetMessages');
+                            localStorage.removeItem('bookPlanetReplies');
+                            localStorage.setItem(FLAG, '1');
+                            console.log('[messages] Cleared local messages/replies by migration');
+                        }
+                    } catch (e) { /* ignore */ }
+                }
+
                 async function loadMessages() {
+                    // 確保在載入前執行清理（僅第一次）
+                    performMessageStorageMigration();
                     // 顯示載入中
                     messagesDiv.innerHTML = `
                         <div class="loading-messages">
@@ -1556,22 +1681,8 @@
 
                 // 初始化示範留言（僅在第一次訪問時）
                 function initSampleMessages() {
-                    const existingMessages = localStorage.getItem('bookPlanetMessages');
-                    if (!existingMessages) {
-                        const sampleMessages = [
-                            {
-                                name: "布可星球管理員",
-                                content: "歡迎使用布可星球選書系統！掃描書籍條碼即可查詢書籍資訊。",
-                                time: new Date().toISOString()
-                            },
-                            {
-                                name: "讀者小明",
-                                content: "這個系統真的很方便！掃描後立刻就能看到書籍詳細資料。",
-                                time: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() // 昨天
-                            }
-                        ];
-                        localStorage.setItem('bookPlanetMessages', JSON.stringify(sampleMessages));
-                    }
+                    // 已停用示例留言注入，保持留言區為空。
+                    return;
                 }
 
                 // 執行初始化
@@ -2001,7 +2112,7 @@
                     </div>
                     <div class="stat-item">
                         <span class="stat-number" id="scanCount">0</span>
-                        <span class="stat-label">本次掃描</span>
+                        <span class="stat-label">累計掃描</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-number" id="bookCount">載入中...</span>
@@ -2067,18 +2178,18 @@
                 lastVisit: 'bookScannerLastVisit'
             };
 
-            // 內部狀態
-            let scanCount = 0;
+            // 內部狀態（累計掃描數使用 localStorage 持久化）
+            const STORAGE_SCAN_TOTAL = 'bookScannerTotalScanCount';
+            let scanCount = parseInt(localStorage.getItem(STORAGE_SCAN_TOTAL) || '0');
 
             /**
              * 更新掃描次數
              */
             function updateScanCount() {
                 scanCount++;
+                localStorage.setItem(STORAGE_SCAN_TOTAL, String(scanCount));
                 const element = document.getElementById('scanCount');
-                if (element) {
-                    element.textContent = scanCount;
-                }
+                if (element) element.textContent = scanCount.toLocaleString();
             }
 
             /**
@@ -2086,16 +2197,21 @@
              */
             async function loadStats() {
                 let remoteVisitBase = 0;
-                try {
-                    // 嘗試從外部檔案載入統計資料
-                    const response = await fetch('./data/stats.json');
-                    if (response.ok) {
-                        const stats = await response.json();
-                        remoteVisitBase = parseInt(stats.visitCount || 0) || 0;
-                        console.log('✅ 從外部檔案載入統計資料成功');
+                const disableRemoteBase = localStorage.getItem('bookScannerDisableRemoteBase') === '1';
+                if (!disableRemoteBase) {
+                    try {
+                        // 嘗試從外部檔案載入統計資料
+                        const response = await fetch('./data/stats.json');
+                        if (response.ok) {
+                            const stats = await response.json();
+                            remoteVisitBase = parseInt(stats.visitCount || 0) || 0;
+                            console.log('✅ 從外部檔案載入統計資料成功');
+                        }
+                    } catch (error) {
+                        console.log('ℹ️ 外部檔案載入失敗，使用本地統計');
                     }
-                } catch (error) {
-                    console.log('ℹ️ 外部檔案載入失敗，使用本地統計');
+                } else {
+                    console.log('ℹ️ 已停用遠端訪問基準（清空後的本地模式）');
                 }
 
                 // 使用遠端基準數（若有）+ 本地 15 分鐘冷卻累加
@@ -2181,6 +2297,9 @@
             document.addEventListener('DOMContentLoaded', function () {
                 loadStats();
                 updateBookCount();
+                // 初始化累計掃描數顯示
+                const scanEl = document.getElementById('scanCount');
+                if (scanEl) scanEl.textContent = scanCount.toLocaleString();
 
                 // 監聽掃描成功（當結果卡片顯示成功時）
                 const observer = new MutationObserver(function (mutations) {
@@ -2204,6 +2323,21 @@
                     observer.observe(resultCard, { attributes: true });
                 }
             });
+
+            // 導出：清空累計訪問與掃描
+            window.clearVisitStats = function () {
+                try {
+                    localStorage.removeItem('bookScannerVisitCount');
+                    localStorage.removeItem('bookScannerLastVisit');
+                    localStorage.removeItem('bookScannerLocalDelta');
+                    localStorage.setItem('bookScannerDisableRemoteBase', '1');
+                    localStorage.removeItem('bookScannerTotalScanCount');
+                } catch { }
+                const visitEl = document.getElementById('visitCount');
+                if (visitEl) visitEl.textContent = '0';
+                const scanEl = document.getElementById('scanCount');
+                if (scanEl) scanEl.textContent = '0';
+            }
         })();
     </script>
 </body>
