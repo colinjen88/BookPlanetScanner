@@ -25,7 +25,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script src="https://unpkg.com/@zxing/browser@latest"></script>
     <script src="https://code.iconify.design/3/3.1.1/iconify.min.js"></script>
-    <link rel="stylesheet" href="src/css/scan.css?3">
+    <link rel="stylesheet" href="src/css/scan.css?6">
 </head>
 
 <body>
@@ -1059,12 +1059,21 @@
                 elements.preview.srcObject = null;
                 updateEngineBadge('已停止');
                 elements.engineStatus.textContent = '已停止';
+                // 確保停止按鈕在停止後被隱藏與停用
+                elements.stopBtn.disabled = true;
+                elements.stopBtn.style.display = 'none';
                 elements.startBtn.style.display = 'inline-flex';
                 elements.scannerControls.style.display = 'none';
                 elements.flashOffBtn.disabled = true;
                 elements.flashOnBtn.disabled = true;
                 elements.flashOffBtn.style.display = 'none';
+                // 確保 flashOnNew (id="flashOnNew") 按鈕完全隱藏
                 elements.flashOnBtn.style.display = 'none';
+                // 額外確保使用 CSS display:none 隱藏 flashOnNew 按鈕
+                const flashOnNewBtn = document.getElementById('flashOnNew');
+                if (flashOnNewBtn) {
+                    flashOnNewBtn.style.display = 'none';
+                }
                 state.flashOn = false;
                 updateCameraStatusText();
                 if (resetStatsToo) {
@@ -1141,7 +1150,18 @@
 
             function bindEvents() {
                 elements.startBtn.addEventListener('click', startScanner);
-                elements.stopBtn.addEventListener('click', () => stopScanner(false));
+                elements.stopBtn.addEventListener('click', () => {
+                    // 先立即隱藏並停用「停止掃描」按鈕，避免重複點擊
+                    elements.stopBtn.style.display = 'none';
+                    elements.stopBtn.disabled = true;
+                    // 立即隱藏 flashOnNew 按鈕
+                    const flashOnNewBtn = document.getElementById('flashOnNew');
+                    if (flashOnNewBtn) {
+                        flashOnNewBtn.style.display = 'none';
+                    }
+                    elements.flashOnBtn.style.display = 'none';
+                    stopScanner(false);
+                });
                 elements.flashOffBtn.addEventListener('click', turnOnFlash);
                 elements.flashOnBtn.addEventListener('click', turnOffFlash);
 
