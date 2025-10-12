@@ -4,7 +4,7 @@
 
 即時掃描書本條碼（ISBN），比對本地書單，判斷是否為布可星球選書；全站純前端，支援行動裝置相機、雙引擎偵測與成熟的 UI/UX 細節。
 
-[![Static](https://img.shields.io/badge/site-static-brightgreen)](#) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Demo](https://img.shields.io/badge/demo-live-success)](https://colinjen88.github.io/BookPlanetScanner/) [![Static](https://img.shields.io/badge/site-static-brightgreen)](#) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 </div>
 
