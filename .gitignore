@@ -1,4 +1,17 @@
-# 依賴和虛擬環境
+# Secrets and local configs
+scripts/myapikey.json
+*.env
+*.pem
+*.key
+*.pfx
+*.p12
+*.cer
+*.crt
+.DS_Store
+Thumbs.db
+node_modules/
+dist/
+build/# 依賴和虛擬環境
 .venv/
 venv/
 env/

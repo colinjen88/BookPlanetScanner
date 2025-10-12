@@ -1,0 +1,8 @@
+{
+  "note": "Place your API credentials here for local testing only. Do NOT commit real secrets.",
+  "googleCloud": {
+    "projectId": "your-project-id",
+    "client_email": "service-account@example.iam.gserviceaccount.com",
+    "private_key": "-----BEGIN PRIVATE KEY-----\n<REDACTED>\n-----END PRIVATE KEY-----\n"
+  }
+}
