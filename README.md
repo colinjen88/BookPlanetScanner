@@ -33,8 +33,4 @@
 - 僅在使用時向瀏覽器請求攝影機權限
 
 ## 有任何問題或建議，歡迎聯繫姍姍爸爸
-Email：[
-colinjen88@gmail.com](mailto:colinjen88@gmail.com)
-
-一鍵發信（含主旨）：
-[點我發信](mailto:colinjen88@gmail.com?subject=%E5%B8%83%E5%8F%AF%E6%98%9F%E7%90%83%E6%A2%9D%E7%A2%BC%E6%8E%83%E6%8F%8F%E5%99%A8%20%E4%BD%BF%E7%94%A8%E5%9B%9E%E9%A5%8B)
+Email：[colinjen88@gmail.com](mailto:colinjen88@gmail.com)
