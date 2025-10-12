@@ -2,7 +2,8 @@
 
 # 布可星球條碼掃描器
 
-[![Demo](https://img.shields.io/badge/demo-live-success)](https://colinjen88.github.io/BookPlanetScanner/)
+[![Demo (GitHub Pages)](https://img.shields.io/badge/demo-GitHub%20Pages-2ea44f)](https://colinjen88.github.io/BookPlanetScanner/)  
+[👉 線上可用版本（seobi.tw）](https://seobi.tw/books_query/scan.html)
 
 </div>
 
