@@ -1582,7 +1582,8 @@
                             <div class="reply-input-group">
                                 <input type="text" placeholder="你的暱稱" id="replyName_${msg.id || msg.time}" value="${(() => {
                             const profile = localStorage.getItem('bookPlanetUserProfile');
-                            return profile ? JSON.parse(profile).nickname : localStorage.getItem('bookPlanetUserNickname') || '';
+                            const nick = profile ? JSON.parse(profile).nickname : (localStorage.getItem('bookPlanetUserNickname') || '');
+                            return escapeAttr(nick);
                         })()}" required />
                             </div>
                             <div class="reply-input-group">
@@ -1980,11 +1981,22 @@
                     }, 2000);
                 }
 
-                // HTML 轉義（防 XSS）
+                // HTML 轉義（防 XSS - 文字內容）
                 function escapeHtml(text) {
                     const div = document.createElement('div');
                     div.textContent = text;
                     return div.innerHTML;
+                }
+
+                // 屬性值轉義（防 XSS - 屬性情境，如 value / title）
+                function escapeAttr(text) {
+                    if (text == null) return '';
+                    return String(text)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
                 }
 
                 // 時間格式化
