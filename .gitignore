@@ -1,5 +1,7 @@
 # Secrets and local configs
 scripts/myapikey.json
+myapikey.json
+爬蟲程式/myapikey.json
 *.env
 *.pem
 *.key
