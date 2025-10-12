@@ -295,12 +295,20 @@
              */
             async function loadBookList() {
                 try {
-                    const response = await fetch('data/books_list.json');
+                    // Plan B: 支援精簡版資料集（books_list.sample.json）
+                    const params = new URLSearchParams(location.search);
+                    const modeParam = params.get('mode');
+                    const storedMode = localStorage.getItem('bookPlanetDatasetMode');
+                    const datasetMode = (modeParam === 'lite' || modeParam === 'full') ? modeParam : (storedMode || 'full');
+                    const dataUrl = datasetMode === 'lite' ? 'data/books_list.sample.json' : 'data/books_list.json';
+
+                    const response = await fetch(dataUrl);
                     state.bookList = await response.json();
 
                     // 更新 UI 顯示載入結果
                     elements.resultCard.classList.remove('error', 'success');
-                    elements.resultCard.textContent = `📚 已載入 ${state.bookList.length} 本布可星球選書，準備開始掃描。`;
+                    const modeBadge = datasetMode === 'lite' ? '（精簡版）' : '';
+                    elements.resultCard.textContent = `📚 已載入 ${state.bookList.length} 本布可星球選書${modeBadge}，準備開始掃描。`;
 
                     // 將 state 暴露給全域，供統計功能使用
                     window.state = state;
@@ -311,7 +319,7 @@
                     }));
                 } catch (error) {
                     elements.resultCard.classList.add('error');
-                    elements.resultCard.textContent = '❌ 書單載入失敗，請確認 data/books_list.json 是否存在。';
+                    elements.resultCard.textContent = '❌ 書單載入失敗，請確認資料檔是否存在。';
                     log(`書單載入失敗：${error.message}`);
 
                     // 載入失敗時也觸發事件
@@ -1383,6 +1391,7 @@
                     <div style="display:flex;flex-direction:column;gap:8px;">
                         <button id="btnClearMessages" style="padding:8px 10px;border:none;border-radius:8px;background:#374151;color:#e5e7eb;cursor:pointer;font-size:13px;text-align:left;">🗑️ 清空留言板</button>
                         <button id="btnClearVisits" style="padding:8px 10px;border:none;border-radius:8px;background:#374151;color:#e5e7eb;cursor:pointer;font-size:13px;text-align:left;">♻️ 清空累計訪問</button>
+                        <button id="btnToggleDataset" style="padding:8px 10px;border:none;border-radius:8px;background:#374151;color:#e5e7eb;cursor:pointer;font-size:13px;text-align:left;">🧰 切換資料集（完整版/精簡版）</button>
                     </div>
                 `;
 
@@ -1419,6 +1428,15 @@
                         } catch { }
                     }
                     alert('累計訪問已清空');
+                });
+
+                // 切換資料集模式（儲存到 localStorage，並重新整理頁面）
+                panel.querySelector('#btnToggleDataset').addEventListener('click', () => {
+                    const current = localStorage.getItem('bookPlanetDatasetMode') || 'full';
+                    const next = current === 'full' ? 'lite' : 'full';
+                    localStorage.setItem('bookPlanetDatasetMode', next);
+                    alert(`已切換為 ${next === 'lite' ? '精簡版' : '完整版'} 資料集，將重新載入頁面。`);
+                    location.reload();
                 });
             }
 
