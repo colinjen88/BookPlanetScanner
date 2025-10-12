@@ -21,135 +21,20 @@ class BarcodeScanner {
             stats: {
                 frames: 0,
                 valid: 0,
-              }
-    }
+            /*
+              Deprecated file (scanner.js.broken)
+              ----------------------------------
+              這是早期的實驗性/破損版本，現已停用，僅保留作為歷史紀錄。
+              - 不會被任何頁面引用
+              - 請勿在新程式碼中 import/use
+              - 真正的掃描邏輯已整合於 scan.html 內部腳本與 src/js 模組
 
-    // === 檢測方法 ===      success: 0
-            },
-            roi: {
-                enabled: true,
-                widthRatio: 0.78,
-                heightRatio: 0.42
-            },
-            processing: {
-                contrast: 1.35,
-                brightness: 1.05,
-                gamma: 0.9,
-                denoise: true,
-                sharpen: true
-            },
-            detection: {
-                allowRotation: true,
-                allowSlices: true,
-                useBarcodeDetector: true,
-                useZxing: true,
-                intervalMs: 120,
-                rotationAngles: [-12, -6, 6, 12],
-                slices: [
-                    { label: '中心', topRatio: 0.25, heightRatio: 0.5 },
-                    { label: '上方', topRatio: 0.05, heightRatio: 0.45 },
-                    { label: '下方', topRatio: 0.5, heightRatio: 0.45 }
-                ]
-            },
-            lastCodes: [],
-            logSize: 120
-        };
+              如需參考，請查看：
+              - scan.html
+              - src/js/ui-utils.js
+              - config/scan_config.json
+            */
 
-        this.SUPPORTED_FORMATS = [
-            'ean_13', 'ean_8', 'upc_a', 'upc_e',
-            'code_128', 'code_39', 'code_93', 'itf', 'codabar'
-        ];
-
-        this.ZXING_AVAILABLE = false;
-        this.ZXING_FORMATS = [];
-
-        this.elements = {};
-        this.processingCanvas = null;
-        this.processingCtx = null;
-        this.scratchCanvas = null;
-        this.scratchCtx = null;
-    }
-
-    // === 初始化方法 ===
-    init(elements) {
-        this.elements = elements;
-        this.processingCanvas = document.getElementById('processingCanvas');
-        this.processingCtx = this.processingCanvas.getContext('2d', { willReadFrequently: true });
-        this.scratchCanvas = document.getElementById('scratchCanvas');
-        this.scratchCtx = this.scratchCanvas.getContext('2d', { willReadFrequently: true });
-
-        this.checkZXingAvailability();
-        this.initDetectors();
-        this.bindEvents();
-        
-        // 開發模式下暴露狀態到全域
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            window.scanner = this;
-            window.state = this.state;
-        }
-
-        return this.loadBookList();
-    }
-
-    // === ZXing 可用性檢查 ===
-    checkZXingAvailability() {
-        try {
-            if (typeof ZXing !== 'undefined' && ZXing.BrowserMultiFormatReader) {
-                this.ZXING_AVAILABLE = true;
-                this.ZXING_FORMATS = [
-                    ZXing.BarcodeFormat.EAN_13,
-                    ZXing.BarcodeFormat.EAN_8,
-                    ZXing.BarcodeFormat.UPC_A,
-                    ZXing.BarcodeFormat.UPC_E,
-                    ZXing.BarcodeFormat.CODE_128,
-                    ZXing.BarcodeFormat.CODE_39,
-                    ZXing.BarcodeFormat.CODE_93,
-                    ZXing.BarcodeFormat.ITF,
-                    ZXing.BarcodeFormat.CODABAR
-                ];
-                this.log('✅ ZXing 庫已載入');
-            } else {
-                this.ZXING_AVAILABLE = false;
-                this.log('⚠️ ZXing 庫未找到，將僅使用 BarcodeDetector');
-            }
-        } catch (error) {
-            this.ZXING_AVAILABLE = false;
-            this.log(`ZXing 檢查失敗：${error.message}`);
-        }
-    }
-
-    // === 日誌功能 ===
-    log(message) {
-        const timestamp = new Date().toLocaleTimeString();
-        console.log(`[${timestamp}] ${message}`);
-    }
-
-    // === 載入書籍清單 ===
-    async loadBookList() {
-        try {
-            const response = await fetch('books_list.json?v=' + Date.now());
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            this.state.bookList = await response.json();
-            this.log(`📚 載入 ${this.state.bookList.length} 本布可星球選書`);
-        } catch (error) {
-            this.log(`書單載入失敗：${error.message}`);
-            this.state.bookList = [];
-        }
-    }
-
-    // === 初始化檢測器 ===
-    initDetectors() {
-        // 初始化 BarcodeDetector
-        try {
-            if ('BarcodeDetector' in window) {
-                this.state.detectors.barcodeDetector = new BarcodeDetector({
-                    formats: this.SUPPORTED_FORMATS
-                });
-                this.log('✅ BarcodeDetector 已初始化');
-            } else {
-                this.log('⚠️ 此瀏覽器不支援 BarcodeDetector');
-            }
-        } catch (error) {
             this.log(`⚠️ BarcodeDetector 初始化失敗：${error.message}`);
         }
 
