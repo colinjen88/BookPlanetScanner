@@ -2221,7 +2221,15 @@
                         const response = await fetch('./data/stats.json');
                         if (response.ok) {
                             const stats = await response.json();
-                            remoteVisitBase = parseInt(stats.visitCount || 0) || 0;
+                            const newBase = parseInt(stats.visitCount || 0) || 0;
+                            // 若遠端基準變動，重置本地增量，避免舊增量疊加
+                            const baseKey = 'bookScannerRemoteBase';
+                            const lastBase = parseInt(localStorage.getItem(baseKey) || '0');
+                            if (newBase !== lastBase) {
+                                localStorage.setItem('bookScannerLocalDelta', '0');
+                                localStorage.setItem(baseKey, String(newBase));
+                            }
+                            remoteVisitBase = newBase;
                             console.log('✅ 從外部檔案載入統計資料成功');
                         }
                     } catch (error) {
