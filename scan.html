@@ -2197,7 +2197,13 @@
 
             // 內部狀態（累計掃描數使用 localStorage 持久化）
             const STORAGE_SCAN_TOTAL = 'bookScannerTotalScanCount';
-            let scanCount = parseInt(localStorage.getItem(STORAGE_SCAN_TOTAL) || '0');
+            const SCAN_BASELINE = 132; // 累計掃描基準值
+            let scanCountStored = localStorage.getItem(STORAGE_SCAN_TOTAL);
+            let scanCount = parseInt(scanCountStored);
+            if (isNaN(scanCount) || scanCount < SCAN_BASELINE) {
+                scanCount = SCAN_BASELINE;
+                localStorage.setItem(STORAGE_SCAN_TOTAL, String(scanCount));
+            }
 
             /**
              * 更新掃描次數
