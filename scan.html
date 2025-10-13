@@ -97,6 +97,33 @@
                 appVersion: document.querySelector('.app-version')
             };
 
+            // === 日誌與除錯控制 ===
+            const DEBUG = (() => {
+                try {
+                    const params = new URLSearchParams(location.search);
+                    if (params.get('debug') === '1' || params.has('debug')) return true;
+                    const flag = localStorage.getItem('bookPlanetDebug');
+                    return flag === '1' || flag === 'true';
+                } catch (_) { return false; }
+            })();
+
+            // 預設靜默：關閉 console 與攔截錯誤（debug 模式才開啟）
+            if (!DEBUG) {
+                try {
+                    const noop = () => { };
+                    console.log = noop;
+                    console.info = noop;
+                    console.debug = noop;
+                    console.warn = noop;
+                    console.error = noop;
+                } catch (_) { }
+                // 避免未處理錯誤在主控台噴出
+                try {
+                    window.addEventListener('error', (e) => { e.preventDefault(); return false; });
+                    window.addEventListener('unhandledrejection', (e) => { e.preventDefault(); return false; });
+                } catch (_) { }
+            }
+
             // === Canvas 元素和上下文 ===
             const processingCanvas = document.getElementById('processingCanvas');
             const processingCtx = processingCanvas.getContext('2d', { willReadFrequently: true });
@@ -246,8 +273,9 @@
              * @param {string} message - 日誌訊息
              */
             function log(message) {
+                if (!DEBUG) return;
                 const timestamp = new Date().toLocaleTimeString('zh-TW', { hour12: false });
-                console.log(`[${timestamp}] ${message}`);
+                try { console.log(`[${timestamp}] ${message}`); } catch (_) { }
             }
 
             /**
@@ -2147,7 +2175,7 @@
                 initDetectors();
                 bindEvents();
                 loadBookList();
-                initializeNickname();
+                // initializeNickname() 僅在留言板顯示時觸發
 
                 // 檢查基本功能
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
