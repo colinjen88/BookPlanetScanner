@@ -132,15 +132,15 @@
                 // ROI 設定
                 roi: {
                     enabled: true,
-                    widthRatio: 0.78,
-                    heightRatio: 0.42
+                    widthRatio: 0.98,
+                    heightRatio: 0.26
                 },
 
                 // 影像處理設定
                 processing: {
-                    contrast: 1.35,
-                    brightness: 1.05,
-                    gamma: 0.9,
+                    contrast: 1.95,
+                    brightness: 1.8,
+                    gamma: 1.4,
                     denoise: true,
                     sharpen: true
                 },
@@ -164,7 +164,7 @@
                 lastCodes: [],
                 logSize: 120,
 
-                // 相機設定（將被外部設定覆蓋）
+                // 相機設定(off)
                 cameraConfig: {
                     facingMode: 'environment',
                     idealWidth: 1920,
@@ -173,7 +173,7 @@
                     minHeight: 480
                 },
 
-                // UI 設定（將被外部設定覆蓋）
+                // UI 設定(off)
                 uiConfig: {
                     loadingDelay: 700,
                     popoverDuration: 1500,
@@ -287,6 +287,7 @@
                 } catch (error) {
                     log(`⚠️ 掃描設定載入失敗，使用預設值: ${error.message}`);
                     // 如果載入失敗，保持使用程式碼中的預設值
+                    try { showTransientPopover('驚喜!!', 2000); } catch (e) { }
                 }
             }
 
@@ -984,6 +985,48 @@
                         popover.style.display = 'none'; // 隱藏元素
                     }, state.uiConfig.fadeOutDelay);
                 }, state.uiConfig.popoverDuration);
+            }
+
+            // 顯示短暫訊息的 Popover（自訂文字與顯示時間）
+            function showTransientPopover(message, durationMs = 2000) {
+                const resultCard = elements.resultCard;
+                const popover = elements.successPopover;
+
+                if (!resultCard || !popover) {
+                    log('⚠️ Popover 或 ResultCard 元素未找到（transient）');
+                    return;
+                }
+
+                // 設定顯示文字並重置樣式
+                popover.textContent = message;
+                popover.classList.remove('show', 'fade-out');
+                popover.style.display = 'block';
+                popover.style.position = 'fixed';
+                popover.style.zIndex = '9999';
+
+                // 參考 resultCard 位置
+                const rect = resultCard.getBoundingClientRect();
+                const popoverLeft = rect.left + (rect.width / 2);
+                const popoverTop = rect.top - 60;
+                popover.style.left = `${popoverLeft}px`;
+                popover.style.top = `${popoverTop}px`;
+                popover.style.transform = 'translateX(-50%)';
+
+                // 觸發進場動畫
+                popover.offsetHeight;
+                requestAnimationFrame(() => {
+                    popover.classList.add('show');
+                });
+
+                // durationMs 後淡出並隱藏
+                setTimeout(() => {
+                    popover.classList.add('fade-out');
+                    setTimeout(() => {
+                        popover.classList.remove('show', 'fade-out');
+                        popover.style.position = 'absolute';
+                        popover.style.display = 'none';
+                    }, state.uiConfig.fadeOutDelay);
+                }, durationMs);
             }
 
             async function processFrame() {
