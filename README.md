@@ -32,5 +32,10 @@
 - 條碼影像處理僅在瀏覽器端進行，不上傳伺服器
 - 僅在使用時向瀏覽器請求攝影機權限
 
+## 安全與隱私
+- 已在 `scan.html` 中設定嚴格的 CSP（Content Security Policy），僅允許必要來源的 script/img/connect/frame。
+- 依賴的第三方資源與資料收集（若保留 Google Tag Manager）等細節，請參見 [SECURITY.md](./SECURITY.md)。
+- 建議將外部 CDN 依賴鎖定為明確版本並加入 SRI，或改為自我託管以降低供應鏈風險。
+
 ## 有任何問題或建議，歡迎聯繫姍姍爸爸
 Email：[colinjen88@gmail.com](mailto:colinjen88@gmail.com)
