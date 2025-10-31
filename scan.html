@@ -1542,65 +1542,27 @@
                 }
 
                 async function loadMessages() {
-                    // 確保在載入前執行清理（僅第一次）
-                    performMessageStorageMigration();
                     // 顯示載入中
                     messagesDiv.innerHTML = `
                         <div class="loading-messages">
                             <p>📡 正在載入留言...</p>
                         </div>
                     `;
-
                     try {
-                        let messages = [];
-
-                        // 嘗試從外部檔案載入留言
-                        try {
-                            const response = await fetch('./data/messages.json');
-                            if (response.ok) {
-                                messages = await response.json();
-                                log('✅ 從外部檔案載入留言成功');
-                            } else {
-                                throw new Error('外部檔案不存在');
-                            }
-                        } catch (fileError) {
-                            // 如果外部檔案失敗，使用本地儲存
-                            log('ℹ️ 外部檔案載入失敗，使用本地儲存');
-                            const storedMessages = localStorage.getItem('bookPlanetMessages');
-                            messages = storedMessages ? JSON.parse(storedMessages) : [];
-                        }
-
-                        // 如果有載入外部檔案，也合併本地的新留言
-                        if (messages.length > 0) {
-                            const localMessages = localStorage.getItem('bookPlanetMessages');
-                            if (localMessages) {
-                                const localParsed = JSON.parse(localMessages);
-                                // 找出本地但不在外部檔案中的留言（新留言）
-                                const newLocalMessages = localParsed.filter(local =>
-                                    !messages.some(external => external.id === local.id)
-                                );
-                                // 將新留言放在最前面
-                                messages = [...newLocalMessages, ...messages];
-                            }
-                        }
-
-                        // 載入並合併回覆
-                        const storedReplies = localStorage.getItem('bookPlanetReplies');
-                        if (storedReplies) {
-                            const replies = JSON.parse(storedReplies);
-                            // 將回覆加到對應的留言中
-                            messages = messages.map(msg => {
-                                const messageReplies = replies.filter(reply => {
-                                    // 比較時都轉成字串，因為parentId可能是數字或字串
-                                    return String(reply.parentId) === String(msg.id || msg.time);
-                                });
-                                if (messageReplies.length > 0) {
-                                    return { ...msg, replies: messageReplies };
-                                }
-                                return msg;
-                            });
-                        }
-
+                        // 1. 從 App Script API 取得留言
+                        const apiUrl = 'https://script.google.com/macros/s/AKfycbxxGrtApDxjWiepnHOt_c8wB5Q-sTYjvEVTSBP8lAII1X1455mOmZDkFx-hSuQrStT3HA/exec';
+                        const response = await fetch(apiUrl);
+                        if (!response.ok) throw new Error('雲端留言 API 失敗');
+                        const data = await response.json();
+                        // 假設回傳為 array 且有 nickname, content, timestamp 欄位
+                        let messages = Array.isArray(data) ? data : (data.messages || []);
+                        // 轉換欄位名稱
+                        messages = messages.map(msg => ({
+                            id: msg.timestamp || msg.id || Date.now(),
+                            name: msg.nickname,
+                            content: msg.content,
+                            time: msg.timestamp
+                        }));
                         if (messages.length === 0) {
                             messagesDiv.innerHTML = `
                                 <div class="empty-messages">
@@ -1609,29 +1571,20 @@
                             `;
                         } else {
                             messagesDiv.innerHTML = messages.map(msg => renderMessage(msg)).join('');
-                            // 綁定回覆按鈕事件
                             bindReplyEvents();
                         }
-
                         log('✅ 留言載入成功');
-
                     } catch (error) {
-                        log(`❌ 載入留言失敗：${error.message}`);
-
-                        messagesDiv.innerHTML = `
-                            <div class="message error-message" style="text-align: center; color: var(--error-light); background: rgba(220, 38, 38, 0.1); border-color: var(--error);">
-                                <div class="message-content">
-                                    <p style="margin-bottom: 8px;">⚠️ 載入留言時發生錯誤</p>
-                                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">請稍後再試</p>
-                                    <button class="reload-btn" onclick="loadMessages()">
-                                        🔄 重新載入
-                                    </button>
-                                    <button class="clear-btn" title="清除所有留言" onclick="window.clearAllMessages()">
-                                        🗑️
-                                    </button>
-                                </div>
-                            </div>
-                        `;
+                        log(`❌ 雲端留言載入失敗：${error.message}`);
+                        // fallback: 本地留言
+                        const storedMessages = localStorage.getItem('bookPlanetMessages');
+                        const messages = storedMessages ? JSON.parse(storedMessages) : [];
+                        if (messages.length === 0) {
+                            messagesDiv.innerHTML = `<div class="empty-messages"><p>💬 還沒有留言，成為第一個留言的人吧！</p></div>`;
+                        } else {
+                            messagesDiv.innerHTML = messages.map(msg => renderMessage(msg)).join('');
+                            bindReplyEvents();
+                        }
                     }
                 }
 
@@ -1907,7 +1860,7 @@
                 }
 
                 // 送出留言
-                function submitMessage(e) {
+                async function submitMessage(e) {
                     e.preventDefault();
 
                     const name = document.getElementById('name').value.trim();
@@ -1937,48 +1890,47 @@
                     try {
                         // 新增留言
                         const newMessage = {
-                            id: Date.now(), // 簡單的ID生成
-                            name: name,
+                            nickname: name,
                             content: content,
-                            time: new Date().toISOString()
+                            timestamp: new Date().toISOString()
                         };
-
-                        // 同時儲存到本地儲存（作為備援）
+                        // 1. 送到 App Script API
+                        const apiUrl = 'https://script.google.com/macros/s/AKfycbxxGrtApDxjWiepnHOt_c8wB5Q-sTYjvEVTSBP8lAII1X1455mOmZDkFx-hSuQrStT3HA/exec';
+                        const resp = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(newMessage)
+                        });
+                        if (!resp.ok) throw new Error('雲端留言送出失敗');
+                        // 2. 本地備援
                         const storedMessages = localStorage.getItem('bookPlanetMessages');
                         const localMessages = storedMessages ? JSON.parse(storedMessages) : [];
-                        localMessages.unshift(newMessage);
+                        localMessages.unshift({
+                            id: Date.now(),
+                            name: name,
+                            content: content,
+                            time: newMessage.timestamp
+                        });
                         localStorage.setItem('bookPlanetMessages', JSON.stringify(localMessages));
-
                         // 更新用戶暱稱（如果用戶手動修改了）
                         const currentStoredNickname = localStorage.getItem('bookPlanetUserNickname');
                         if (name !== currentStoredNickname) {
                             localStorage.setItem('bookPlanetUserNickname', name);
                         }
-
                         // 重置表單並重新載入留言
                         msgForm.reset();
                         loadMessages();
-
-                        // 重新設定暱稱到輸入框
                         setTimeout(() => {
                             const nameInput = document.getElementById('name');
-                            if (nameInput) {
-                                nameInput.value = name;
-                            }
+                            if (nameInput) nameInput.value = name;
                         }, 100);
-
-                        log('✅ 留言已儲存到本地，請手動更新 data/messages.json 檔案');
-
-                        // 顯示提示訊息
+                        log('✅ 留言已送出到雲端');
                         showAlert('留言已送出！', 'success');
                         showFeedbackSuccess();
-
                     } catch (error) {
                         log(`❌ 送出留言失敗：${error.message}`);
                         showAlert('留言送出失敗，請稍後再試', 'error');
-
                     } finally {
-                        // 恢復按鈕狀態
                         submitBtn.textContent = originalText;
                         submitBtn.disabled = false;
                     }
