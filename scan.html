@@ -1374,7 +1374,6 @@
                 const settings = state.track.getSettings();
                 elements.cameraStatus.textContent = `${settings.width || '?'}×${settings.height || '?'} @ ${Math.round(settings.frameRate || 0)}fps`;
             }
-
             function bindEvents() {
                 elements.startBtn.addEventListener('click', () => {
                     // 防止快速連點開始
