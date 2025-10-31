@@ -4,7 +4,7 @@
 <head>
     <!-- Content Security Policy: restrict to necessary sources only -->
     <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://unpkg.com https://code.iconify.design 'wasm-unsafe-eval'; connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://stats.g.doubleclick.net https://code.iconify.design https://unpkg.com; img-src 'self' data: blob: https://www.googletagmanager.com https://www.google-analytics.com https://stats.g.doubleclick.net https://code.iconify.design; frame-src 'self' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; form-action 'self'; worker-src 'self' blob:; media-src 'self' blob: data:; frame-ancestors 'self'; upgrade-insecure-requests;">
+        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://unpkg.com https://code.iconify.design 'wasm-unsafe-eval'; connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://stats.g.doubleclick.net https://code.iconify.design https://unpkg.com https://script.google.com; font-src 'self' https://r2cdn.perplexity.ai; img-src 'self' data: blob: https://www.googletagmanager.com https://www.google-analytics.com https://stats.g.doubleclick.net https://code.iconify.design; frame-src 'self' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; form-action 'self'; worker-src 'self' blob:; media-src 'self' blob: data:; upgrade-insecure-requests;">
     <!-- Google Tag Manager -->
     <script>
         (function (w, d, s, l, i) {
@@ -206,6 +206,7 @@
                 // UI 設定(off)
                 uiConfig: {
                     loadingDelay: 700,
+                    feedbackApiUrl: '', // 留言板 API 網址
                     popoverDuration: 1500,
                     fadeOutDelay: 300
                 },
@@ -311,6 +312,9 @@
                     }
                     if (config.ui) {
                         state.uiConfig = config.ui;
+                        if (config.ui.feedbackApiUrl) {
+                            log('✅ 留言板 API 網址已載入');
+                        }
                     }
 
                     log('✅ 掃描設定載入成功');
@@ -1550,7 +1554,11 @@
                     `;
                     try {
                         // 1. 從 App Script API 取得留言
-                        const apiUrl = 'https://script.google.com/macros/s/AKfycbxxGrtApDxjWiepnHOt_c8wB5Q-sTYjvEVTSBP8lAII1X1455mOmZDkFx-hSuQrStT3HA/exec';
+                        const apiUrl = state.uiConfig.feedbackApiUrl;
+                        if (!apiUrl) {
+                            throw new Error('留言板 API 網址未設定');
+                        }
+
                         const response = await fetch(apiUrl);
                         if (!response.ok) throw new Error('雲端留言 API 失敗');
                         const data = await response.json();
@@ -1895,7 +1903,12 @@
                             timestamp: new Date().toISOString()
                         };
                         // 1. 送到 App Script API
-                        const apiUrl = 'https://script.google.com/macros/s/AKfycbxxGrtApDxjWiepnHOt_c8wB5Q-sTYjvEVTSBP8lAII1X1455mOmZDkFx-hSuQrStT3HA/exec';
+                        const apiUrl = state.uiConfig.feedbackApiUrl;
+                        if (!apiUrl) {
+                            showAlert('錯誤：留言板 API 未設定', 'error');
+                            throw new Error('留言板 API 網址未設定');
+                        }
+
                         const resp = await fetch(apiUrl, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
