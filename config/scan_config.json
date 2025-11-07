@@ -30,7 +30,7 @@
     "loadingDelay": 700,
     "popoverDuration": 1500,
     "fadeOutDelay": 300,
-    "feedbackApiUrl": "【請貼上您完成所有步驟後，從 Google Apps Script 複製的全新網址】"
+    "feedbackApiUrl": "https://script.google.com/macros/s/AKfycbyfGGrBQ9zxIgp3tMPMY3SU58r1SWyvtETbj05uGucs7rhYGSS2z4QIflyoXAMX5d-PQg/exec"
   },
   "performance": {
     "logSize": 120,
