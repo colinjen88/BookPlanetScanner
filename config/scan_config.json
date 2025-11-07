@@ -1,13 +1,13 @@
 {
   "roi": {
     "enabled": true,
-    "widthRatio": 0.78,
-    "heightRatio": 0.42
+    "widthRatio": 0.98,
+    "heightRatio": 0.26
   },
   "processing": {
-    "contrast": 1.35,
-    "brightness": 1.05,
-    "gamma": 0.9,
+    "contrast": 1.95,
+    "brightness": 1.8,
+    "gamma": 1.4,
     "denoise": true,
     "sharpen": true
   },
@@ -17,17 +17,7 @@
     "useBarcodeDetector": true,
     "useZxing": true,
     "intervalMs": 120,
-    "rotationAngles": [-12, -6, 6, 12],
-    "slices": [
-      { "label": "中心", "topRatio": 0.25, "heightRatio": 0.5 },
-      { "label": "上方", "topRatio": 0.05, "heightRatio": 0.45 },
-      { "label": "下方", "topRatio": 0.5, "heightRatio": 0.45 }
-    ]
-  },
-  "performance": {
-    "logSize": 120,
-    "maxCanvasWidth": 1280,
-    "recentCodeHistorySize": 12
+    "rotationAngles": [ -12, -6, 6, 12 ]
   },
   "camera": {
     "facingMode": "environment",
@@ -39,6 +29,12 @@
   "ui": {
     "loadingDelay": 700,
     "popoverDuration": 1500,
-    "fadeOutDelay": 300
+    "fadeOutDelay": 300,
+    "feedbackApiUrl": "https://script.google.com/macros/s/AKfycbyfGGrBQ9zxIgp3tMPMY3SU58r1SWyvtETbj05uGucs7rhYGSS2z4QIflyoXAMX5d-PQg/exec"
+  },
+  "performance": {
+    "logSize": 120,
+    "maxCanvasWidth": 1280,
+    "recentCodeHistorySize": 12
   }
 }
