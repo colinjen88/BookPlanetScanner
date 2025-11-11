@@ -1974,6 +1974,9 @@
                                     timestamp: newMessage.time
                                 };
 
+                                log(`📤 正在發送留言到 API: ${state.uiConfig.feedbackApiUrl}`);
+                                log(`資料: ${JSON.stringify(apiMessage)}`);
+
                                 const response = await fetch(state.uiConfig.feedbackApiUrl, {
                                     method: 'POST',
                                     headers: {
@@ -1982,11 +1985,15 @@
                                     body: JSON.stringify(apiMessage)
                                 });
 
+                                log(`API 回應狀態: ${response.status}`);
+
                                 if (!response.ok) {
                                     throw new Error(`API 回應錯誤: ${response.status}`);
                                 }
 
                                 const result = await response.json();
+                                log(`API 回應內容: ${JSON.stringify(result)}`);
+
                                 if (result.success) {
                                     log('✅ 留言已成功儲存到雲端');
                                 } else {
@@ -1994,8 +2001,12 @@
                                 }
                             } catch (apiError) {
                                 log(`⚠️ API 儲存失敗: ${apiError.message}，留言已保存到本地`);
-                                // API 失敗不影響使用者體驗，本地已儲存
+                                console.error('API 錯誤詳情:', apiError);
+                                // API 失敗不影響使用者體驗,本地已儲存
                             }
+                        } else {
+                            log(`⚠️ 未設定 API URL，留言僅保存到本地`);
+                            log(`state.uiConfig: ${JSON.stringify(state.uiConfig)}`);
                         }
 
                         // 更新用戶暱稱（如果用戶手動修改了）
