@@ -288,7 +288,7 @@
             async function loadScanConfig() {
                 try {
                     log('正在初始化掃描設定...');
-                    const response = await fetch('config/scan_config.json');
+                    const response = await fetch('/config/scan_config.json');
                     const config = await response.json();
 
                     // 使用外部設定覆蓋預設值
@@ -1554,18 +1554,26 @@
                     try {
                         let messages = [];
 
-                        // 嘗試從外部檔案載入留言
-                        try {
-                            const response = await fetch('./data/messages.json');
-                            if (response.ok) {
-                                messages = await response.json();
-                                log('✅ 從外部檔案載入留言成功');
-                            } else {
-                                throw new Error('外部檔案不存在');
+                        // 優先從 Google Apps Script API 載入
+                        if (state.uiConfig && state.uiConfig.feedbackApiUrl) {
+                            try {
+                                const response = await fetch(state.uiConfig.feedbackApiUrl);
+                                if (response.ok) {
+                                    const data = await response.json();
+                                    messages = data.messages || [];
+                                    log('✅ 從 API 載入留言成功');
+                                } else {
+                                    throw new Error(`API 回應錯誤: ${response.status}`);
+                                }
+                            } catch (apiError) {
+                                log(`⚠️ API 載入失敗: ${apiError.message}，嘗試本地載入`);
+                                // API 失敗時使用本地儲存
+                                const storedMessages = localStorage.getItem('bookPlanetMessages');
+                                messages = storedMessages ? JSON.parse(storedMessages) : [];
                             }
-                        } catch (fileError) {
-                            // 如果外部檔案失敗，使用本地儲存
-                            log('ℹ️ 外部檔案載入失敗，使用本地儲存');
+                        } else {
+                            // 沒有 API URL，使用本地儲存
+                            log('ℹ️ 未設定 API，使用本地儲存');
                             const storedMessages = localStorage.getItem('bookPlanetMessages');
                             messages = storedMessages ? JSON.parse(storedMessages) : [];
                         }
@@ -1907,7 +1915,7 @@
                 }
 
                 // 送出留言
-                function submitMessage(e) {
+                async function submitMessage(e) {
                     e.preventDefault();
 
                     const name = document.getElementById('name').value.trim();
@@ -1943,11 +1951,38 @@
                             time: new Date().toISOString()
                         };
 
-                        // 同時儲存到本地儲存（作為備援）
+                        // 先儲存到本地儲存（作為備援）
                         const storedMessages = localStorage.getItem('bookPlanetMessages');
                         const localMessages = storedMessages ? JSON.parse(storedMessages) : [];
                         localMessages.unshift(newMessage);
                         localStorage.setItem('bookPlanetMessages', JSON.stringify(localMessages));
+
+                        // 如果有 API，發送到伺服器
+                        if (state.uiConfig && state.uiConfig.feedbackApiUrl) {
+                            try {
+                                const response = await fetch(state.uiConfig.feedbackApiUrl, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify(newMessage)
+                                });
+
+                                if (!response.ok) {
+                                    throw new Error(`API 回應錯誤: ${response.status}`);
+                                }
+
+                                const result = await response.json();
+                                if (result.success) {
+                                    log('✅ 留言已成功儲存到雲端');
+                                } else {
+                                    throw new Error(result.error || '未知錯誤');
+                                }
+                            } catch (apiError) {
+                                log(`⚠️ API 儲存失敗: ${apiError.message}，留言已保存到本地`);
+                                // API 失敗不影響使用者體驗，本地已儲存
+                            }
+                        }
 
                         // 更新用戶暱稱（如果用戶手動修改了）
                         const currentStoredNickname = localStorage.getItem('bookPlanetUserNickname');
@@ -1966,8 +2001,6 @@
                                 nameInput.value = name;
                             }
                         }, 100);
-
-                        log('✅ 留言已儲存到本地，請手動更新 data/messages.json 檔案');
 
                         // 顯示提示訊息
                         showAlert('留言已送出！', 'success');
