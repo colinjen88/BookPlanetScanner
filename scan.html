@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+<!--版本20251111-->
 
 <head>
     <!-- Content Security Policy: restrict to necessary sources only -->
@@ -1560,7 +1561,13 @@
                                 const response = await fetch(state.uiConfig.feedbackApiUrl);
                                 if (response.ok) {
                                     const data = await response.json();
-                                    messages = data.messages || [];
+                                    // 將 API 格式轉換成前端格式
+                                    messages = (data.messages || []).map(msg => ({
+                                        id: msg.timestamp,  // 使用 timestamp 作為 id
+                                        name: msg.nickname,
+                                        content: msg.content,
+                                        time: msg.timestamp
+                                    }));
                                     log('✅ 從 API 載入留言成功');
                                 } else {
                                     throw new Error(`API 回應錯誤: ${response.status}`);
@@ -1960,12 +1967,19 @@
                         // 如果有 API，發送到伺服器
                         if (state.uiConfig && state.uiConfig.feedbackApiUrl) {
                             try {
+                                // 轉換成 API 期望的格式
+                                const apiMessage = {
+                                    nickname: name,
+                                    content: content,
+                                    timestamp: newMessage.time
+                                };
+
                                 const response = await fetch(state.uiConfig.feedbackApiUrl, {
                                     method: 'POST',
                                     headers: {
                                         'Content-Type': 'application/json'
                                     },
-                                    body: JSON.stringify(newMessage)
+                                    body: JSON.stringify(apiMessage)
                                 });
 
                                 if (!response.ok) {
