@@ -141,17 +141,75 @@ class FeedbackSystem {
     }
 
     async saveToFile(filename, data) {
-        // 模擬檔案儲存（實際上會使用 localStorage 作為備援）
-        const response = await fetch('/api/save-messages', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        });
+        // 嘗試從全域配置獲取 API URL
+        let apiUrl = null;
+        
+        // 方法1: 從 window.state 獲取（scan.html 使用的方式）
+        if (window.state && window.state.uiConfig && window.state.uiConfig.feedbackApiUrl) {
+            apiUrl = window.state.uiConfig.feedbackApiUrl;
+        }
+        // 方法2: 從全域變數獲取
+        else if (window.feedbackApiUrl) {
+            apiUrl = window.feedbackApiUrl;
+        }
+        // 方法3: 嘗試載入配置檔案
+        else {
+            try {
+                const configResponse = await fetch('./config/scan_config.json');
+                if (configResponse.ok) {
+                    const config = await configResponse.json();
+                    if (config.ui && config.ui.feedbackApiUrl) {
+                        apiUrl = config.ui.feedbackApiUrl;
+                    }
+                }
+            } catch (error) {
+                console.log('無法載入配置檔案:', error.message);
+            }
+        }
 
-        if (!response.ok) {
-            throw new Error('伺服器儲存失敗');
+        // 如果沒有 API URL，只儲存到 localStorage
+        if (!apiUrl) {
+            console.log('未設定 API URL，僅保存到本地儲存');
+            return;
+        }
+
+        // 將留言資料轉換成 API 格式並發送
+        try {
+            // 只發送最新的留言（最後一筆）
+            const latestMessage = Array.isArray(data) && data.length > 0 ? data[data.length - 1] : null;
+            
+            if (latestMessage) {
+                const apiMessage = {
+                    nickname: latestMessage.name || 'Anonymous',
+                    content: latestMessage.content || '',
+                    timestamp: latestMessage.timestamp || new Date().toISOString(),
+                    parentId: latestMessage.parentId || ''
+                };
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(apiMessage),
+                    mode: 'cors'
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+
+                const result = await response.json();
+                if (!result.success) {
+                    throw new Error(result.error || 'API 回應失敗');
+                }
+
+                console.log('✅ 留言已成功儲存到 Google Sheets');
+            }
+        } catch (error) {
+            console.error('API 儲存失敗:', error);
+            throw error; // 重新拋出錯誤，讓調用者知道失敗了
         }
     }
 

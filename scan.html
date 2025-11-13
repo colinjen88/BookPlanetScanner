@@ -5,7 +5,7 @@
 <head>
     <!-- Content Security Policy: restrict to necessary sources only -->
     <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://unpkg.com https://code.iconify.design 'wasm-unsafe-eval'; connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://stats.g.doubleclick.net https://code.iconify.design https://unpkg.com; img-src 'self' data: blob: https://www.googletagmanager.com https://www.google-analytics.com https://stats.g.doubleclick.net https://code.iconify.design; frame-src 'self' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; form-action 'self'; worker-src 'self' blob:; media-src 'self' blob: data:; frame-ancestors 'self'; upgrade-insecure-requests;">
+        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://unpkg.com https://code.iconify.design 'wasm-unsafe-eval'; connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://stats.g.doubleclick.net https://code.iconify.design https://unpkg.com https://script.google.com https://script.googleusercontent.com; img-src 'self' data: blob: https://www.googletagmanager.com https://www.google-analytics.com https://stats.g.doubleclick.net https://code.iconify.design; frame-src 'self' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; form-action 'self'; worker-src 'self' blob:; media-src 'self' blob: data:; upgrade-insecure-requests;">
     <!-- Google Tag Manager -->
     <script>
         (function (w, d, s, l, i) {
@@ -289,7 +289,14 @@
             async function loadScanConfig() {
                 try {
                     log('正在初始化掃描設定...');
-                    const response = await fetch('/config/scan_config.json');
+                    // 使用相對路徑，兼容本地和網站空間
+                    const configPath = './config/scan_config.json';
+                    const response = await fetch(configPath);
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
                     const config = await response.json();
 
                     // 使用外部設定覆蓋預設值
@@ -316,8 +323,14 @@
 
                     log('✅ 掃描設定載入成功');
                     log(`ROI: ${state.roi.widthRatio}×${state.roi.heightRatio}, 處理: 對比度${state.processing.contrast}, 檢測間隔: ${state.detection.intervalMs}ms`);
+                    if (state.uiConfig && state.uiConfig.feedbackApiUrl) {
+                        log(`✅ 留言 API URL 已載入: ${state.uiConfig.feedbackApiUrl}`);
+                    } else {
+                        log(`⚠️ 留言 API URL 未設定`);
+                    }
                 } catch (error) {
                     log(`⚠️ 掃描設定載入失敗，使用預設值: ${error.message}`);
+                    console.error('配置載入錯誤詳情:', error);
                     // 如果載入失敗，保持使用程式碼中的預設值
                     try { showTransientPopover('驚喜!!', 2000); } catch (e) { }
                 }
@@ -1965,6 +1978,7 @@
                         localStorage.setItem('bookPlanetMessages', JSON.stringify(localMessages));
 
                         // 如果有 API，發送到伺服器
+                        let apiSuccess = false;
                         if (state.uiConfig && state.uiConfig.feedbackApiUrl) {
                             try {
                                 // 轉換成 API 期望的格式
@@ -1977,36 +1991,46 @@
                                 log(`📤 正在發送留言到 API: ${state.uiConfig.feedbackApiUrl}`);
                                 log(`資料: ${JSON.stringify(apiMessage)}`);
 
+                                // Google Apps Script 需要處理重定向，使用 redirect: 'follow'
                                 const response = await fetch(state.uiConfig.feedbackApiUrl, {
                                     method: 'POST',
                                     headers: {
                                         'Content-Type': 'application/json'
                                     },
-                                    body: JSON.stringify(apiMessage)
+                                    body: JSON.stringify(apiMessage),
+                                    mode: 'cors', // 明確指定 CORS 模式
+                                    redirect: 'follow' // 跟隨重定向（Apps Script 會重定向一次）
                                 });
 
                                 log(`API 回應狀態: ${response.status}`);
+                                log(`API 回應標頭: ${JSON.stringify([...response.headers.entries()])}`);
 
                                 if (!response.ok) {
-                                    throw new Error(`API 回應錯誤: ${response.status}`);
+                                    const errorText = await response.text();
+                                    log(`API 錯誤回應內容: ${errorText}`);
+                                    throw new Error(`API 回應錯誤: ${response.status} - ${errorText}`);
                                 }
 
                                 const result = await response.json();
                                 log(`API 回應內容: ${JSON.stringify(result)}`);
 
                                 if (result.success) {
-                                    log('✅ 留言已成功儲存到雲端');
+                                    apiSuccess = true;
+                                    log('✅ 留言已成功儲存到 Google Sheets');
                                 } else {
                                     throw new Error(result.error || '未知錯誤');
                                 }
                             } catch (apiError) {
                                 log(`⚠️ API 儲存失敗: ${apiError.message}，留言已保存到本地`);
                                 console.error('API 錯誤詳情:', apiError);
-                                // API 失敗不影響使用者體驗,本地已儲存
+                                // 顯示錯誤給使用者
+                                showAlert(`⚠️ 留言已保存到本地，但無法同步到雲端：${apiError.message}`, 'warning');
+                                // 不要設定 apiSuccess = true，這樣使用者會知道有問題
                             }
                         } else {
                             log(`⚠️ 未設定 API URL，留言僅保存到本地`);
                             log(`state.uiConfig: ${JSON.stringify(state.uiConfig)}`);
+                            showAlert('⚠️ 留言 API 未設定，僅保存到本地', 'warning');
                         }
 
                         // 更新用戶暱稱（如果用戶手動修改了）
@@ -2027,9 +2051,13 @@
                             }
                         }, 100);
 
-                        // 顯示提示訊息
-                        showAlert('留言已送出！', 'success');
-                        showFeedbackSuccess();
+                        // 顯示提示訊息（根據 API 是否成功）
+                        if (apiSuccess) {
+                            showAlert('✅ 留言已成功送出並同步到雲端！', 'success');
+                            showFeedbackSuccess();
+                        } else {
+                            showAlert('⚠️ 留言已保存到本地，但無法同步到雲端。請檢查 Console 查看詳情。', 'warning');
+                        }
 
                     } catch (error) {
                         log(`❌ 送出留言失敗：${error.message}`);

@@ -30,7 +30,7 @@
     "loadingDelay": 700,
     "popoverDuration": 1500,
     "fadeOutDelay": 300,
-    "feedbackApiUrl": "https://script.google.com/macros/s/AKfycbyfGGrBQ9zxIgp3tMPMY3SU58r1SWyvtETbj05uGucs7rhYGSS2z4QIflyoXAMX5d-PQg/exec"
+    "feedbackApiUrl": "https://script.google.com/macros/s/AKfycbzhcl9INMIlInXvoXFtfQ44eOOKa90FIykbdKCTJw6Ww-u3ZCQrxfzDDVJFglLkUzPagg/exec"
   },
   "performance": {
     "logSize": 120,
