@@ -1989,13 +1989,12 @@
                                 };
 
                                 log(`📤 正在發送留言到 API: ${state.uiConfig.feedbackApiUrl}`);
-                                log(`資料: ${JSON.stringify(apiMessage)}`);
 
                                 // Google Apps Script 需要處理重定向，使用 redirect: 'follow'
                                 const response = await fetch(state.uiConfig.feedbackApiUrl, {
                                     method: 'POST',
                                     headers: {
-                                        'Content-Type': 'application/json'
+                                        'Content-Type': 'text/plain;charset=utf-8'
                                     },
                                     body: JSON.stringify(apiMessage),
                                     mode: 'cors', // 明確指定 CORS 模式
