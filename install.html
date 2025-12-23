@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>安裝說明 | 布可快速登入</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --surface: rgba(30, 41, 59, 0.8);
+            --success: #10b981;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 0;
+        }
+
+        h1 {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+
+        .step-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .step-num {
+            width: 40px;
+            height: 40px;
+            background: var(--success);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .step-title {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .step-content {
+            color: var(--text-muted);
+            font-size: 15px;
+        }
+
+        .step-content a {
+            color: var(--success);
+            text-decoration: none;
+        }
+
+        .step-content a:hover {
+            text-decoration: underline;
+        }
+
+        .btn {
+            display: inline-block;
+            background: var(--success);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 12px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .browser-links {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .browser-link {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border);
+            padding: 10px 16px;
+            border-radius: 8px;
+            color: var(--text);
+            text-decoration: none;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s;
+        }
+
+        .browser-link:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .done-section {
+            text-align: center;
+            padding: 40px 0;
+        }
+
+        .done-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        footer {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 13px;
+            padding: 40px 0;
+        }
+
+        footer a {
+            color: var(--success);
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 安裝說明</h1>
+            <p class="subtitle">只需 2 個步驟，即可快速登入！</p>
+        </header>
+
+        <div class="step-card">
+            <div class="step-header">
+                <div class="step-num">1</div>
+                <div class="step-title">開啟「快速登入」並設定</div>
+            </div>
+            <div class="step-content">
+                <p>設定您孩子的年級、班級、座號。設定只需做一次，會自動儲存在裝置上。</p>
+                <a href="quick-login.html" class="btn">🚀 前往快速登入</a>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-header">
+                <div class="step-num">2</div>
+                <div class="step-title">加入主畫面 (推薦)</div>
+            </div>
+            <div class="step-content">
+                <p>將「布可快速登入」加到手機/電腦的主畫面，下次直接點圖示就能啟動！</p>
+                <div
+                    style="margin-top: 12px; background: rgba(255,255,255,0.05); padding: 16px; border-radius: 12px; font-size: 14px;">
+                    <p><strong>📱 手機 (Chrome/Safari)：</strong><br>
+                        點選單 → 「加到主畫面」或「新增至主畫面」</p>
+                    <p style="margin-top: 12px;"><strong>💻 電腦 (Chrome/Edge)：</strong><br>
+                        網址列右側會出現安裝圖示 ⊕ → 點擊安裝</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="done-section">
+            <div class="done-icon">🎉</div>
+            <h2>完成！</h2>
+            <p style="color: var(--text-muted); margin-top: 8px;">每次只需點一下主畫面圖示，代碼自動複製、跳轉登入頁！</p>
+        </div>
+
+        <div class="step-card" style="border-color: rgba(251, 191, 36, 0.3); background: rgba(251, 191, 36, 0.05);">
+            <div class="step-header">
+                <div class="step-num" style="background: #fbbf24; color: #1e1b4b;">⚡</div>
+                <div class="step-title">進階：全自動登入 (電腦適用)</div>
+            </div>
+            <div class="step-content">
+                <p>安裝瀏覽器腳本後，系統會自動選擇「學生登入」、填入代碼、並送出表單，真正實現一鍵登入！</p>
+
+                <p style="margin-top: 16px;"><strong>步驟 A：安裝 Tampermonkey 擴充功能</strong></p>
+                <div class="browser-links">
+                    <a href="https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo"
+                        target="_blank" class="browser-link">
+                        🌐 Chrome
+                    </a>
+                    <a href="https://addons.mozilla.org/firefox/addon/tampermonkey/" target="_blank"
+                        class="browser-link">
+                        🦊 Firefox
+                    </a>
+                    <a href="https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd"
+                        target="_blank" class="browser-link">
+                        📘 Edge
+                    </a>
+                </div>
+
+                <p style="margin-top: 16px;"><strong>步驟 B：安裝「快速登入助手」腳本</strong></p>
+                <a href="userscript/bookplanet-autofill.user.js" class="btn"
+                    style="background: #fbbf24; color: #1e1b4b;">📥 安裝腳本</a>
+            </div>
+        </div>
+
+        <footer>
+            <p>有問題嗎？請聯繫 <a href="mailto:colinjen88@gmail.com">姍姍爸爸</a></p>
+            <p style="margin-top: 8px;"><a href="index.html">← 返回首頁</a></p>
+        </footer>
+    </div>
+</body>
+
+</html>

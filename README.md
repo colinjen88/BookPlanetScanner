@@ -7,13 +7,37 @@
 
 </div>
 
-## 這是什麼
-- 用相機即時掃描書本條碼（ISBN），比對本地書單，判斷是否為「布可星球選書」。
-- 純前端實作（無後端），可直接部署到 GitHub Pages。
+# 布可星球快速登入 (Book Planet Quick Login)
 
-## 如何使用
-- 開啟 Demo 連結，授權相機後點「開始掃描」。
-- 掃到條碼會即時顯示比對結果；找到選書會出現成功提示。
+> 🚀 專為「布可星球」設計的極速登入工具，支援一鍵登入！
+
+## 主要功能
+
+- **一鍵啟動**：點擊圖示即自動複製代碼並跳轉登入頁。
+- **PWA 支援**：可安裝至手機或電腦桌面，像 App 一樣使用。
+- **全自動登入**：配合 Userscript，實現真正的「零操作」登入。
+- **安全隱私**：所有設定僅儲存於您的裝置，不傳送至伺服器。
+
+## 快速開始
+
+1. 開啟 [快速登入頁面](https://your-domain.com/quick-login.html)
+2. 設定年級、班級、座號。
+3. 點擊「啟動登入」即可！
+
+## 安裝指南
+
+詳見 [安裝說明頁面](https://your-domain.com/install.html) 或 `install.html`。
+
+### 支援平台
+- **Mobile**: iOS (Safari), Android (Chrome/Firefox)
+- **Desktop**: Chrome, Edge, Safari
+
+## 專案結構
+- `quick-login.html`: PWA 主程式
+- `install.html`: 安裝教學
+- `userscript/`: 自動化腳本
+- `userscript/bookplanet-autofill.user.js`: Tampermonkey 腳本
+- `sw.js`: Service Worker (PWA 核心)
 
 ## 功能重點
 - 雙引擎：原生 BarcodeDetector + ZXing（相互補強）

@@ -1,0 +1,446 @@
+/* =============================================
+   布可星球入口頁面樣式
+   Portal Page Styles for BookPlanetScanner
+   ============================================= */
+
+:root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --primary-light: #3b82f6;
+    --success: #059669;
+    --success-light: #10b981;
+    --error: #dc2626;
+    --error-light: #ef4444;
+    --warning: #d97706;
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-tertiary: #334155;
+    --surface: rgba(30, 41, 59, 0.95);
+    --surface-light: rgba(51, 65, 85, 0.8);
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --border: rgba(148, 163, 184, 0.2);
+    --border-light: rgba(203, 213, 225, 0.3);
+    --shadow: rgba(0, 0, 0, 0.25);
+
+    /* Portal 專用變數 */
+    --card-bg: rgba(30, 41, 59, 0.7);
+    --card-border: rgba(255, 255, 255, 0.08);
+    --glow-primary: rgba(59, 130, 246, 0.4);
+    --glow-success: rgba(16, 185, 129, 0.4);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    height: 100%;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+    background: linear-gradient(135deg, var(--bg-primary) 0%, #0c1420 50%, #020617 100%);
+    color: var(--text-primary);
+    min-height: 100vh;
+    line-height: 1.6;
+    overflow-x: hidden;
+    position: relative;
+}
+
+/* 動態背景動畫 */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        radial-gradient(ellipse 80% 50% at 20% 40%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse 60% 40% at 80% 60%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse 50% 30% at 50% 80%, rgba(16, 185, 129, 0.08) 0%, transparent 50%);
+    animation: bgPulse 8s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+
+@keyframes bgPulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+}
+
+/* 浮動粒子效果 */
+.particles {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 0;
+}
+
+.particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    animation: float 15s infinite ease-in-out;
+}
+
+.particle:nth-child(1) { left: 10%; animation-delay: 0s; animation-duration: 12s; }
+.particle:nth-child(2) { left: 20%; animation-delay: 2s; animation-duration: 14s; }
+.particle:nth-child(3) { left: 30%; animation-delay: 4s; animation-duration: 16s; }
+.particle:nth-child(4) { left: 40%; animation-delay: 1s; animation-duration: 13s; }
+.particle:nth-child(5) { left: 50%; animation-delay: 3s; animation-duration: 15s; }
+.particle:nth-child(6) { left: 60%; animation-delay: 5s; animation-duration: 11s; }
+.particle:nth-child(7) { left: 70%; animation-delay: 2s; animation-duration: 17s; }
+.particle:nth-child(8) { left: 80%; animation-delay: 4s; animation-duration: 12s; }
+.particle:nth-child(9) { left: 90%; animation-delay: 1s; animation-duration: 14s; }
+
+@keyframes float {
+    0% {
+        transform: translateY(100vh) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.6;
+    }
+    90% {
+        opacity: 0.6;
+    }
+    100% {
+        transform: translateY(-100vh) rotate(720deg);
+        opacity: 0;
+    }
+}
+
+/* 主容器 */
+.portal-container {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+}
+
+/* Logo 與標題區域 */
+.portal-header {
+    text-align: center;
+    margin-bottom: 48px;
+}
+
+.portal-logo {
+    font-size: clamp(48px, 10vw, 72px);
+    margin-bottom: 8px;
+    animation: logoFloat 3s ease-in-out infinite;
+}
+
+@keyframes logoFloat {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-8px);
+    }
+}
+
+.portal-title {
+    font-size: clamp(32px, 6vw, 48px);
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--primary-light), #a78bfa, var(--success-light));
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradientShift 4s ease-in-out infinite;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+}
+
+@keyframes gradientShift {
+    0%, 100% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+}
+
+.portal-subtitle {
+    font-size: clamp(16px, 3vw, 20px);
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* 功能卡片網格 */
+.portal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+    max-width: 800px;
+    width: 100%;
+}
+
+/* 功能卡片 */
+.portal-card {
+    position: relative;
+    background: var(--card-bg);
+    border: 2px solid var(--card-border);
+    border-radius: 24px;
+    padding: 36px 28px;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    backdrop-filter: blur(20px);
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        0 4px 16px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.portal-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, 
+        rgba(255, 255, 255, 0.05) 0%, 
+        transparent 50%, 
+        rgba(255, 255, 255, 0.02) 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.portal-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.portal-card:hover::before {
+    opacity: 1;
+}
+
+/* 選書查詢卡片 - 藍色主題 */
+.portal-card.books-query {
+    --card-accent: var(--primary-light);
+    --card-glow: var(--glow-primary);
+}
+
+.portal-card.books-query:hover {
+    box-shadow: 
+        0 16px 48px rgba(0, 0, 0, 0.4),
+        0 8px 24px rgba(59, 130, 246, 0.2),
+        0 0 48px rgba(59, 130, 246, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+/* 布可答題卡片 - 綠色主題 */
+.portal-card.book-quiz {
+    --card-accent: var(--success-light);
+    --card-glow: var(--glow-success);
+}
+
+.portal-card.book-quiz:hover {
+    box-shadow: 
+        0 16px 48px rgba(0, 0, 0, 0.4),
+        0 8px 24px rgba(16, 185, 129, 0.2),
+        0 0 48px rgba(16, 185, 129, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
+/* 即將推出樣式 */
+.portal-card.coming-soon {
+    opacity: 0.85;
+}
+
+.portal-card.coming-soon:hover {
+    opacity: 1;
+}
+
+/* 卡片圖標 */
+.card-icon {
+    font-size: 56px;
+    margin-bottom: 20px;
+    transition: transform 0.3s ease;
+}
+
+.portal-card:hover .card-icon {
+    transform: scale(1.15);
+}
+
+/* 卡片標題 */
+.card-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+
+/* 卡片描述 */
+.card-description {
+    font-size: 15px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+/* 卡片標籤 */
+.card-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.card-badge.active {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-color: var(--primary-light);
+    color: white;
+}
+
+.card-badge.coming-soon {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(168, 85, 247, 0.2));
+    border-color: rgba(139, 92, 246, 0.4);
+    color: #c4b5fd;
+}
+
+/* 即將推出標示 */
+.coming-soon-overlay {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: linear-gradient(135deg, #8b5cf6, #a855f7);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+}
+
+/* 頁尾 */
+.portal-footer {
+    margin-top: 48px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.portal-footer a {
+    color: var(--primary-light);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.portal-footer a:hover {
+    color: var(--text-primary);
+}
+
+/* Toast 提示 */
+.toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 16px 28px;
+    border-radius: 16px;
+    font-size: 15px;
+    font-weight: 500;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(16px);
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 1000;
+}
+
+.toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+/* RWD 響應式設計 */
+@media (max-width: 640px) {
+    .portal-container {
+        padding: 32px 16px;
+    }
+
+    .portal-header {
+        margin-bottom: 36px;
+    }
+
+    .portal-logo {
+        font-size: 48px;
+    }
+
+    .portal-grid {
+        gap: 16px;
+    }
+
+    .portal-card {
+        padding: 28px 20px;
+        border-radius: 20px;
+    }
+
+    .card-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+    }
+
+    .card-title {
+        font-size: 20px;
+    }
+
+    .card-description {
+        font-size: 14px;
+    }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+    .portal-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* 動畫減少模式 */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

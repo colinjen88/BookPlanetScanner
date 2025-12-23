@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="布可快登">
+
+    <title>布可快速登入</title>
+    <meta name="description" content="一鍵啟動布可星球答題登入">
+
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="manifest" href="manifest.json">
+
+    <style>
+        :root {
+            --bg: #0f172a;
+            --surface: rgba(30, 41, 59, 0.8);
+            --success: #10b981;
+            --success-glow: rgba(16, 185, 129, 0.4);
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: 20px;
+            padding-top: env(safe-area-inset-top, 20px);
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
+
+        /* ===== 兩種視圖狀態 ===== */
+        .view {
+            display: none;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .view.active {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* ===== 設定視圖 ===== */
+        #setup-view {
+            gap: 24px;
+        }
+
+        .setup-title {
+            font-size: 24px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .setup-subtitle {
+            color: var(--text-muted);
+            font-size: 14px;
+            text-align: center;
+            margin-top: -12px;
+        }
+
+        .input-group {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .input-field {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .input-field label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .input-field input,
+        .input-field select {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 16px;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text);
+            text-align: center;
+            outline: none;
+            transition: border-color 0.2s;
+            width: 100%;
+        }
+
+        .input-field input:focus,
+        .input-field select:focus {
+            border-color: var(--success);
+        }
+
+        .btn-save {
+            width: 100%;
+            background: var(--success);
+            border: none;
+            border-radius: 16px;
+            padding: 18px;
+            font-size: 18px;
+            font-weight: 700;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 8px 24px var(--success-glow);
+        }
+
+        .btn-save:active {
+            transform: scale(0.98);
+        }
+
+        /* ===== 啟動視圖 ===== */
+        #launch-view {
+            gap: 32px;
+            text-align: center;
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .user-label {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .user-code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 56px;
+            font-weight: 800;
+            color: var(--success);
+            letter-spacing: 6px;
+            text-shadow: 0 0 30px var(--success-glow);
+        }
+
+        .btn-launch {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--success), #059669);
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 24px;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow:
+                0 16px 48px var(--success-glow),
+                inset 0 2px 0 rgba(255, 255, 255, 0.2);
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-launch::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .btn-launch:hover::before {
+            opacity: 1;
+        }
+
+        .btn-launch:active {
+            transform: scale(0.95);
+        }
+
+        .btn-launch .icon {
+            font-size: 48px;
+        }
+
+        .btn-edit {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 14px;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: color 0.2s, background 0.2s;
+        }
+
+        .btn-edit:hover {
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* ===== 提示訊息 ===== */
+        .hint {
+            display: none;
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 16px 24px;
+            border-radius: 16px;
+            font-size: 15px;
+            text-align: center;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 90vw;
+            z-index: 100;
+            animation: slideUp 0.3s ease;
+        }
+
+        .hint.show {
+            display: block;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        .hint-code {
+            display: inline-block;
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-family: monospace;
+            margin: 0 4px;
+        }
+
+        /* ===== 安裝提示 ===== */
+        .install-prompt {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 16px;
+            border-radius: 16px;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            z-index: 200;
+        }
+
+        .install-prompt.show {
+            display: flex;
+        }
+
+        .install-text {
+            flex: 1;
+            font-size: 14px;
+        }
+
+        .install-btn {
+            background: var(--success);
+            border: none;
+            border-radius: 10px;
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .install-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        /* ===== 隱藏 number input spinner ===== */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type="number"] {
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 設定視圖 -->
+    <div id="setup-view" class="view">
+        <h1 class="setup-title">🚀 設定你的快速登入</h1>
+        <p class="setup-subtitle">只需設定一次，之後一鍵啟動！</p>
+
+        <div class="input-group">
+            <div class="input-field">
+                <label>年級</label>
+                <select id="grade">
+                    <option value="1">1 年級</option>
+                    <option value="2">2 年級</option>
+                    <option value="3">3 年級</option>
+                    <option value="4">4 年級</option>
+                    <option value="5">5 年級</option>
+                    <option value="6">6 年級</option>
+                    <option value="7">7 年級 (國一)</option>
+                    <option value="8">8 年級 (國二)</option>
+                    <option value="9">9 年級 (國三)</option>
+                </select>
+            </div>
+
+            <div class="input-row">
+                <div class="input-field">
+                    <label>班級</label>
+                    <input type="number" id="classNo" min="1" max="99" value="1" inputmode="numeric">
+                </div>
+                <div class="input-field">
+                    <label>座號</label>
+                    <input type="number" id="seatNo" min="1" max="99" value="1" inputmode="numeric">
+                </div>
+            </div>
+        </div>
+
+        <button class="btn-save" onclick="saveSettings()">✓ 儲存設定</button>
+    </div>
+
+    <!-- 啟動視圖 -->
+    <div id="launch-view" class="view">
+        <div class="user-info">
+            <span class="user-label">你的登入代碼</span>
+            <span class="user-code" id="display-code">---</span>
+        </div>
+
+        <button class="btn-launch" onclick="launch()">
+            <span class="icon">🚀</span>
+            <span>啟動登入</span>
+        </button>
+
+        <button class="btn-edit" onclick="showSetup()">✏️ 修改設定</button>
+
+        <div style="margin-top: 24px; text-align: center;">
+            <a href="install.html" style="color: var(--text-muted); font-size: 13px; text-decoration: none;">
+                ⚙️ 首次使用？安裝自動登入腳本
+            </a>
+        </div>
+    </div>
+
+    <!-- 提示訊息 -->
+    <div class="hint" id="hint">
+        代碼 <span class="hint-code" id="hint-code">50103</span> 已複製！<br>
+        選「學生登入」後直接貼上
+    </div>
+
+    <!-- 安裝提示 -->
+    <div class="install-prompt" id="install-prompt">
+        <span class="install-text">📲 加入主畫面，下次更快！</span>
+        <button class="install-btn" id="install-btn">安裝</button>
+        <button class="install-close" onclick="dismissInstall()">×</button>
+    </div>
+
+    <script>
+        // 註冊 Service Worker (PWA 必需)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(() => console.log('[PWA] Service Worker 已註冊'))
+                .catch((err) => console.log('[PWA] Service Worker 註冊失敗:', err));
+        }
+
+        const STORAGE_KEY = 'bookPlanet_quickLogin';
+        const LOGIN_URL = 'https://openid.tn.edu.tw/op/login.aspx';
+
+        let deferredPrompt = null;
+
+        // 初始化
+        function init() {
+            const data = loadData();
+            if (data) {
+                showLaunch(data);
+            } else {
+                showSetup();
+            }
+
+            // PWA 安裝提示
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                // 只有首次才顯示安裝提示
+                if (!localStorage.getItem('installDismissed')) {
+                    document.getElementById('install-prompt').classList.add('show');
+                }
+            });
+
+            document.getElementById('install-btn').addEventListener('click', () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    deferredPrompt.userChoice.then(() => {
+                        deferredPrompt = null;
+                        dismissInstall();
+                    });
+                }
+            });
+        }
+
+        function loadData() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function saveData(data) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+
+        function generateCode(grade, classNo, seatNo) {
+            return `${grade}${String(classNo).padStart(2, '0')}${String(seatNo).padStart(2, '0')}`;
+        }
+
+        function showSetup() {
+            document.getElementById('setup-view').classList.add('active');
+            document.getElementById('launch-view').classList.remove('active');
+
+            // 如果有既有資料，填入
+            const data = loadData();
+            if (data) {
+                document.getElementById('grade').value = data.grade;
+                document.getElementById('classNo').value = data.classNo;
+                document.getElementById('seatNo').value = data.seatNo;
+            }
+        }
+
+        function showLaunch(data) {
+            document.getElementById('setup-view').classList.remove('active');
+            document.getElementById('launch-view').classList.add('active');
+
+            const code = generateCode(data.grade, data.classNo, data.seatNo);
+            document.getElementById('display-code').textContent = code;
+        }
+
+        function saveSettings() {
+            const grade = parseInt(document.getElementById('grade').value);
+            const classNo = parseInt(document.getElementById('classNo').value) || 1;
+            const seatNo = parseInt(document.getElementById('seatNo').value) || 1;
+
+            const data = {
+                grade: Math.min(9, Math.max(1, grade)),
+                classNo: Math.min(99, Math.max(1, classNo)),
+                seatNo: Math.min(99, Math.max(1, seatNo))
+            };
+
+            saveData(data);
+            showLaunch(data);
+        }
+
+        async function launch() {
+            const data = loadData();
+            if (!data) return;
+
+            const code = generateCode(data.grade, data.classNo, data.seatNo);
+
+            // 複製到剪貼簿 (作為備用)
+            try {
+                await navigator.clipboard.writeText(code);
+            } catch (e) {
+                const ta = document.createElement('textarea');
+                ta.value = code;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+            }
+
+            // 顯示提示
+            document.getElementById('hint-code').textContent = code;
+            const hint = document.getElementById('hint');
+            hint.classList.add('show');
+
+            // 跳轉到登入頁，代碼放在 hash 中 (供 userscript 讀取)
+            setTimeout(() => {
+                window.location.href = LOGIN_URL + '#' + code;
+            }, 600);
+        }
+
+        function dismissInstall() {
+            document.getElementById('install-prompt').classList.remove('show');
+            localStorage.setItem('installDismissed', 'true');
+        }
+
+        // 啟動
+        init();
+    </script>
+</body>
+
+</html>

@@ -1,45 +1,94 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta http-equiv="refresh" content="0; url=scan.html">
-    <title>正在前往布可星球條碼掃描器…</title>
-    <style>
-        html,
-        body {
-            height: 100%;
-            margin: 0;
-            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans TC", sans-serif;
-            background: #0b1220;
-            color: #e5e7eb;
-            display: grid;
-            place-items: center
-        }
-
-        .box {
-            max-width: 640px;
-            padding: 24px;
-            border: 1px solid rgba(255, 255, 255, .12);
-            border-radius: 12px;
-            background: rgba(17, 24, 39, .6);
-            backdrop-filter: blur(8px);
-            text-align: center
-        }
-
-        a {
-            color: #60a5fa
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>布可星球 | Book Planet</title>
+    <meta name="description" content="布可星球 - 掃描書本條碼查詢選書、快速答題系統">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="src/css/portal.css">
 </head>
 
 <body>
-    <div class="box">
-        <h1>布可星球條碼掃描器</h1>
-        <p>將自動導向至主頁面。如果未自動跳轉，請點擊下方連結。</p>
-        <p><a href="scan.html">開啟掃描器</a></p>
+    <!-- 浮動粒子背景 -->
+    <div class="particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
     </div>
+
+    <div class="portal-container">
+        <!-- 標題區域 -->
+        <header class="portal-header">
+            <div class="portal-logo">📚</div>
+            <h1 class="portal-title">布可星球</h1>
+            <p class="portal-subtitle">歡迎來到知識的星球，開始你的閱讀旅程</p>
+        </header>
+
+        <!-- 功能卡片網格 -->
+        <div class="portal-grid">
+            <!-- 選書查詢卡片 -->
+            <a href="scan.html" class="portal-card books-query">
+                <div class="card-icon">📘</div>
+                <h2 class="card-title">選書查詢</h2>
+                <p class="card-description">
+                    掃描書本條碼，即時查詢是否為布可星球選書，<br>
+                    快速找到適合的閱讀好書！
+                </p>
+                <span class="card-badge active">
+                    🚀 立即使用
+                </span>
+            </a>
+
+            <!-- 布可答題卡片 -->
+            <a href="quick-login.html" class="portal-card book-quiz">
+                <div class="card-icon">🚀</div>
+                <h2 class="card-title">快速登入</h2>
+                <p class="card-description">
+                    一鍵啟動布可星球答題系統登入，<br>
+                    設定一次，之後超快進入！
+                </p>
+                <span class="card-badge active">
+                    ⚡ 極速體驗
+                </span>
+            </a>
+        </div>
+
+        <!-- 頁尾 -->
+        <footer class="portal-footer">
+            <p>布可星球 © 2024 | 有任何問題歡迎聯繫
+                <a href="mailto:colinjen88@gmail.com">姍姍爸爸</a>
+            </p>
+        </footer>
+    </div>
+
+    <!-- Toast 提示 -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // 顯示即將推出提示
+        function showComingSoon() {
+            showToast('📝 布可答題功能即將推出，敬請期待！');
+        }
+
+        // Toast 提示函數
+        function showToast(message, duration = 2500) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, duration);
+        }
+    </script>
 </body>
 
 </html>
