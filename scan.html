@@ -27,8 +27,7 @@
     <title>布可星球條碼掃描器</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
-    <script src="https://unpkg.com/@zxing/library@latest"></script>
-    <script src="https://unpkg.com/@zxing/browser@latest"></script>
+    <script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
     <script src="https://code.iconify.design/3/3.1.1/iconify.min.js"></script>
     <link rel="stylesheet" href="src/css/scan.css?7">
 </head>
@@ -239,8 +238,7 @@
              */
             function checkZXingAvailability() {
                 try {
-                    ZXING_AVAILABLE = typeof window.ZXing !== 'undefined' &&
-                        typeof window.ZXingBrowser !== 'undefined';
+                    ZXING_AVAILABLE = typeof window.ZXing !== 'undefined';
 
                     if (ZXING_AVAILABLE) {
                         ZXING_FORMATS = [
@@ -863,7 +861,7 @@
                 }
 
                 try {
-                    const luminanceSource = new ZXingBrowser.HTMLCanvasElementLuminanceSource(canvas);
+                    const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
                     const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
                     const result = reader.decodeWithState(binaryBitmap);
 
