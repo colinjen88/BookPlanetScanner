@@ -197,38 +197,38 @@ h1 span {
 }
 
 .scanner-controls .flash-btn {
-    flex: 0 0 calc(30% - 6px); /* 稍微增加寬度比例，防止文字擠壓 */
+    flex: 0 0 auto;
+    min-width: 80px;
 }
 
 .scanner-controls .btn {
-    flex: 0 0 calc(70% - 6px);
+    flex: 1 1 0%;
 }
 
-/* 手電筒按鈕樣式 - 簡化版本 */
+/* 手電筒按鈕樣式 */
 .flash-btn {
-    height: 60px;
     color: #fff;
-    border: none;
-    padding: 14px 20px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    padding: 0 16px;
     border-radius: 14px;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     cursor: pointer;
     transition: none !important;
     animation: none !important;
     transform: none !important;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
     box-sizing: border-box;
-    text-align: center;
-    line-height: 1.4;
     user-select: none;
     touch-action: manipulation;
     will-change: auto;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2),
         inset 0 1px 0 rgba(255, 255, 255, 0.15);
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    width: 100%;
     white-space: nowrap;
+    min-height: 52px;
 }
 
 .flash-btn.flash-off {
@@ -295,21 +295,14 @@ button.btn {
     height: 60px;
 }
 #stopBtn {
-    line-height: 32px;
-    font-size: 14px !important;
+    line-height: 1.2;
+    font-size: 15px !important;
     display: none;
-    height: 52px !important;
-    min-height: 52px !important;
-    padding: 0;
+    min-height: 52px;
+    padding: 0 16px;
 }
-#flashOffNew {
-    height: 52px !important;
-    font-size: 14px;
-    display: none;
-}
+#flashOffNew,
 #flashOnNew {
-    height: 52px !important;
-    font-size: 14px;
     display: none;
 }
 button.btn::before {
@@ -504,8 +497,8 @@ video#preview {
     line-height: 1.7;
     min-height: 120px;
     font-size: 16px;
-    word-break: break-all;
-    overflow-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: anywhere;
     box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3),
         0 6px 24px rgba(0, 0, 0, 0.15),
         inset 0 2px 0 rgba(255, 255, 255, 0.08),
@@ -797,14 +790,10 @@ video#preview {
         gap: 12px;
     }
 
-    .flash-controls {
-        flex: 0 0 25%;
-    }
-
     .flash-btn {
-        height: 48px;
-        font-size: 12px;
-        padding: 12px 16px;
+        min-height: 48px;
+        font-size: 14px;
+        padding: 0 12px;
     }
 
     .button-row {
@@ -815,30 +804,31 @@ video#preview {
     .button-row .btn-flash {
         flex: 0 0 30%;
         font-size: 13px !important;
-        padding: 16px 12px !important;
+        padding: 14px 12px !important;
     }
 
     .button-row .btn-main {
-        font-size: 17px !important;
-        padding: 16px 20px !important;
+        font-size: 16px !important;
+        padding: 14px 16px !important;
     }
 
     h1 {
-        font-size: clamp(24px, 6vw, 32px);
+        font-size: clamp(22px, 6vw, 32px);
     }
 
     .subtitle {
-        font-size: 15px;
-        margin-bottom: 24px;
+        font-size: 14px;
+        margin-bottom: 20px;
     }
 
     .result-card {
         padding: 20px;
         font-size: 15px;
+        border-radius: 18px;
     }
 
     .status-board {
-        padding: 16px;
+        padding: 14px;
         font-size: 13px;
     }
 
@@ -855,26 +845,44 @@ video#preview {
         border-radius: 20px;
     }
 
-    .result-card {
-        border-radius: 18px;
-        padding: 20px;
+    button.btn {
+        min-height: 52px;
+        height: auto;
+    }
+
+    .scanner-controls {
+        gap: 10px;
+        margin-bottom: 16px;
     }
 }
 
 @media (max-width: 480px) {
-    .header-row {
-        gap: 8px;
+    body {
+        padding: 12px;
     }
 
-    .flash-controls {
-        flex: none;
-        order: 0;
+    .header-row {
+        gap: 6px;
+    }
+
+    h1 {
+        font-size: clamp(20px, 5.5vw, 28px);
+    }
+
+    .subtitle {
+        font-size: 13px;
+        margin-bottom: 16px;
     }
 
     .flash-btn {
-        height: 44px;
-        font-size: 11px;
-        padding: 10px 16px;
+        min-height: 44px;
+        font-size: 13px;
+        padding: 0 10px;
+    }
+
+    .scanner-controls {
+        gap: 8px;
+        margin-bottom: 12px;
     }
 
     .button-row {
@@ -884,19 +892,34 @@ video#preview {
 
     .button-row .btn-main {
         flex: 1;
-        font-size: 13px !important;
-        padding: 12px 14px !important;
-        min-height: 52px;
-        white-space: normal;
-        line-height: 1.2;
+        font-size: 15px !important;
+        padding: 14px 16px !important;
+        min-height: 50px;
+    }
+
+    button.btn {
+        min-height: 48px;
+        height: auto;
+        font-size: 15px;
     }
 
     .result-card {
         padding: 16px;
         font-size: 14px;
         border-radius: 16px;
+        min-height: 100px;
     }
 
+    .result-card.error .error-title,
+    .result-card.success .success-title {
+        font-size: 17px;
+    }
+
+    .status-board {
+        padding: 12px;
+        font-size: 12px;
+        border-radius: 12px;
+    }
 
     .success-popover {
         font-size: 14px;
@@ -905,6 +928,11 @@ video#preview {
 
     .success-popover::after {
         border-width: 10px;
+    }
+
+    .video-shell {
+        border-radius: 16px;
+        margin-bottom: 14px;
     }
 }
 
