@@ -1,66 +1,125 @@
 <div align="center">
 
-# 布可星球條碼掃描器
+# 布可星球選書條碼掃描器 (Book Planet Scanner)
 
-[![Demo (GitHub Pages)](https://img.shields.io/badge/demo-GitHub%20Pages-2ea44f)](https://colinjen88.github.io/BookPlanetScanner/)  
-[👉 線上可用版本（seobi.tw）](https://seobi.tw/books_query/scan.html)
+[![Current Version](https://img.shields.io/badge/version-v2.0.1-blue.svg)](./docs/project/VERSION.md)
+[![Status Active](https://img.shields.io/badge/status-active-success.svg)](#)
+[![Performance Optimized](https://img.shields.io/badge/performance-LUT_Optimized-ff69b4.svg)](#)
 
+[👉 線上正式版本（seobi.tw）](https://book.seobi.tw/)
+
+專為「布可星球」設計的高效能即時條碼掃描系統及資料自動化維護專案。
 </div>
 
-# 布可星球快速登入 (Book Planet Quick Login)
+---
 
-> 🚀 專為「布可星球」設計的極速登入工具，支援一鍵登入！
+## 🚀 系統亮點 (System Highlights)
 
-## 主要功能
+- **高效能單頁應用 (SPA)**：核心邏輯完全整合於單個 `index.html` 內，不依賴龐大的 JavaScript 模組系統，搭配瀏覽器快取機制將載入速度推向極致。
+- ** LUT 效能優化 🚀**：內建 Look-Up Table 演算法進行即時影像顏色轉換與 Gamma 校正 (對比 / 亮度提升)，大幅降低 CPU 負載與耗電，低階手機也能保持流暢幀率。
+- **雙掃描引擎切換**：優先使用瀏覽器原生 `BarcodeDetector API`，支援度不足的設備自動切換至 `ZXing Browser`。
+- **客製化 UI / UX**：為中文介面特別調校的響應式設計，包含 RWD「開燈」自動對齊、長書名字體自動換行、成功偵測彈窗 (Popover) 與自動捲動定位動畫。
+- **即時 JSON 設定配置機制**：透過 `config/scan_config.json` 動態配置 ROI 區域占比、影像處理解析度、按鈕延遲、動畫時長，不需重新發布主程式即可抽換細部參數。
+- **自動化後端維護 (Python)**：配有完整的 `scripts/` (斷點續傳機制與記憶體優化版本爬蟲)，自動從布可星球官網更新龐大的書單，並推播更新至 Google Sheets。
 
-- **一鍵啟動**：點擊圖示即自動複製代碼並跳轉登入頁。
-- **PWA 支援**：可安裝至手機或電腦桌面，像 App 一樣使用。
-- **全自動登入**：配合 Userscript，實現真正的「零操作」登入。
-- **安全隱私**：所有設定僅儲存於您的裝置，不傳送至伺服器。
+---
 
-## 快速開始
+## 📁 最新專案目錄架構 (Project Structure)
 
-1. 開啟 [快速登入頁面](https://your-domain.com/quick-login.html)
-2. 設定年級、班級、座號。
-3. 點擊「啟動登入」即可！
+本專案經過深度模組化與資料清理，最新的版本架構如下：
 
-## 安裝指南
+```text
+📦 BookPlanetScanner (專案根目錄)
+├── index.html              # 🎯 主程式：單一頁面 Web 應用，包含所有掃描與介面互動邏輯
+├── scan.html               # 🔄 向後相容轉址頁，自動 301 導向 https://book.seobi.tw/
+├── README.md               # 📖 專案說明與架構 (本檔案)
+├── SECURITY.md             # 🔒 資安政策說明 (CSP、依賴限制)
+├── package.json            # 📦 專案 Meta 資訊
+│
+├── config/                 # ⚙️ 外部設定參數
+│   └── scan_config.json    # 🔧 影像處理參數 (對比度/亮度/Gamma)、控制 ROI 動畫設定
+│
+├── data/                   # 📊 靜態資料庫
+│   ├── books_list.json     # 📚 核心書單資料庫 (爬蟲更新產出，預設載入)
+│   ├── messages.json       # 💬 預設留言資料結構
+│   └── stats.json          # 📈 預設統計數據
+│
+├── src/                    # 🎨 靜態資源與前端樣式
+│   ├── css/scan.css        # 💫 統一樣式表 (包含動態 RWD 與所有按鈕切換動畫)
+│   └── Pinlocation.lottie  # ✨ Lottie 定位動畫資源
+│
+├── scripts/                # 🤖 後端維護與自動化 Python 指令碼
+│   ├── isbn_continue.py    # 🕷️ 書單爬蟲主程式 (推薦使用：支援斷點續傳機制)
+│   ├── isbn_memory_*.py    # 🕷️ 記憶體優化版爬蟲介面
+│   ├── memory_cleaner.py   # 🧹 記憶體清理工具
+│   └── myapikey...json     # 🔑 Google Sheets API 金鑰範本
+│
+├── tools/                  # 🛠️ 開發與維護輔助工具 (Bash / PowerShell)
+│   ├── optimize.ps1(sh)    # 🚀 專案自動化程式碼瘦身與最佳化部署腳本
+│   ├── cleanup.ps1         # 🧹 刪除過期備份檔、日誌的清理腳本
+│   └── validate.ps1        # ✅ 動態驗證 JSON 檔案格式與完整性腳本
+│
+├── docs/                   # 📝 專案深度說明文檔
+│   ├── project/            # 📦 專案狀態記錄
+│   │   ├── CHANGELOG.md    # 📝 詳細變更日誌
+│   │   ├── VERSION.md      # 🔖 目前版本與重大更新亮點
+│   │   └── PROJECT_COMPLETION_REPORT.md  # 🏁 開發總結與里程碑報告
+│   └── dev/                # 💻 開發指南
+│       ├── API_REFERENCE.md      # 🔌 本地介面功能規格書
+│       └── DEPLOYMENT_GUIDE.md   # 🌍 跨平台部署說明、Cloudflare 整合方式
+│
+├── archive/                # 🗃️ 舊版開發元件與功能備份封存
+└── userscript/             # 🐒 Tampermonkey / Greasemonkey 自動登入腳本
+```
 
-詳見 [安裝說明頁面](https://your-domain.com/install.html) 或 `install.html`。
+---
 
-### 支援平台
-- **Mobile**: iOS (Safari), Android (Chrome/Firefox)
-- **Desktop**: Chrome, Edge, Safari
+## 🛠️ 開發與建置部署 (Development & Deployment)
 
-## 專案結構
-- `quick-login.html`: PWA 主程式
-- `install.html`: 安裝教學
-- `userscript/`: 自動化腳本
-- `userscript/bookplanet-autofill.user.js`: Tampermonkey 腳本
-- `sw.js`: Service Worker (PWA 核心)
+專案的前端介面為純靜態架構 (`Vanilla JS` + `HTML5` + `CSS3`)，**無須複雜建置流程**。
 
-## 功能重點
-- 雙引擎：原生 BarcodeDetector + ZXing（相互補強）
-- 影像前處理：ROI、對比/亮度/降噪/銳化
-- 操作體驗：防連點、防重入、掃描暫停、成功 Popover
-- 數據本地：書單、統計皆在前端完成
-- 雲端留言板：整合 Google Sheets API，支援即時留言與回覆同步
+### 步驟 1: 發布前端更新
+無論修改修改 `index.html` 或 `src/css/scan.css`，都可以隨存隨看（亦相容 VS Code Live Server）。
 
-## 主要檔案
-- `scan.html` 主頁（全部功能在此）
-- `config/scan_config.json` 掃描/畫面/效能參數
-- `data/books_list.json` 完整書單（預設載入）
-- `data/messages.json` 留言（預設為空）
-- `src/css/scan.css` 樣式；`src/js/*` 模組化工具
+### 步驟 2: 最佳化打包
+如果準備更新部署版本，可以直接執行內建的優化工具，快速將程式碼打包為 zip 檔：
+- **Windows**: `pwsh tools\optimize.ps1`
+- **Linux/Mac**: `bash tools/optimize.sh`
 
-## 隱私與權限
-- 條碼影像處理僅在瀏覽器端進行，不上傳伺服器
-- 僅在使用時向瀏覽器請求攝影機權限
+### 步驟 3: GitHub 部署 / Vercel / Cloudflare
+直接推送 `main` 分支或是透過 Cloudflare Pages 連接 Git Repository 自動抓取目錄下內容。部署完成即可藉由 [book.seobi.tw](https://book.seobi.tw/) 開放使用者存取。
 
-## 安全與隱私
-- 已在 `scan.html` 中設定嚴格的 CSP（Content Security Policy），僅允許必要來源的 script/img/connect/frame。
-- 依賴的第三方資源與資料收集（若保留 Google Tag Manager）等細節，請參見 [SECURITY.md](./SECURITY.md)。
-- 建議將外部 CDN 依賴鎖定為明確版本並加入 SRI，或改為自我託管以降低供應鏈風險。
+> **部署細節與架構說明**
+> 詳細設定可以參考 [部署指南文件 (DEPLOYMENT_GUIDE.md)](docs/dev/DEPLOYMENT_GUIDE.md)。
 
-## 有任何問題或建議，歡迎聯繫姍姍爸爸
-Email：[colinjen88@gmail.com](mailto:colinjen88@gmail.com)
+---
+
+## 🕷️ Python 爬蟲與自動化更新
+
+為隨時確保選書為最新清單，專案配備有自動向布可星球查詢並同步到 Google Sheets 的腳本。
+
+1. **安裝環境與相依**:
+   若要執行 `scripts/` 底下的工具，請確保您有 `Python 3.9+`，建議使用虛擬環境建立 `.venv`：
+   ```bash
+   pip install selenium webdriver-manager gspread oauth2client beautifulsoup4
+   ```
+2. **斷點續爬 (推薦方式)**:
+   ```bash
+   python scripts/isbn_continue.py
+   ```
+   會自動分批爬取書籍，記錄在進度檔案中。重啟爬蟲不會重新抓取已完成的部分，大幅省下時間並可抵抗網路中斷。
+3. **爬蟲日誌**:
+   產出的最新資料請存放於 `data/books_list.json` 中並進行 Commit。確保使用者頁面重整後能載入最新的書單。
+
+---
+
+## 🛟 相關資源與技術支援
+
+- **版本變遷**：詳見 [CHANGELOG.md](docs/project/CHANGELOG.md) 以及 [VERSION.md](docs/project/VERSION.md)。
+- **聯絡維護單位**：任何問題或系統維護，請隨時聯繫 _**colinjen88**_ Github Issue 版面 或洽 Email。
+
+---
+<div align="center">
+  <sub>最後更新：2026/03 | 版本：v2.0.1 - "Scanner Performance & UI Fix"</sub><br>
+  <sub>Designed for 📚 Book Planet</sub>
+</div>
