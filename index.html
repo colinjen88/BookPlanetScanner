@@ -232,6 +232,23 @@
             let ZXING_FORMATS = [];
 
             // === 輔助函數 ===
+            let processingLut = null;
+
+            /**
+             * 更新影像處理查表 (LUT)，避免在循環中重複執行昂貴的 Math.pow 計算
+             */
+            function updateProcessingLut() {
+                const contrast = state.processing.contrast;
+                const brightness = state.processing.brightness;
+                const gamma = state.processing.gamma;
+                processingLut = new Uint8Array(256);
+                for (let i = 0; i < 256; i++) {
+                    let val = i * brightness;
+                    val = (val - 128) * contrast + 128;
+                    val = 255 * Math.pow(clamp(val) / 255, gamma);
+                    processingLut[i] = clamp(val);
+                }
+            }
 
             /**
              * 檢查 ZXing 是否可用（延遲檢查）
@@ -320,6 +337,9 @@
                     if (config.ui) {
                         state.uiConfig = config.ui;
                     }
+
+                    // 配置載入後重新計算 LUT
+                    updateProcessingLut();
 
                     log('✅ 掃描設定載入成功');
                     log(`ROI: ${state.roi.widthRatio}×${state.roi.heightRatio}, 處理: 對比度${state.processing.contrast}, 檢測間隔: ${state.detection.intervalMs}ms`);
@@ -453,20 +473,17 @@
             }
 
             function applyImageProcessing(imageData, width, height) {
+                if (!processingLut) updateProcessingLut();
                 const data = imageData.data;
-                const contrast = state.processing.contrast;
-                const brightness = state.processing.brightness;
-                const gamma = state.processing.gamma;
 
+                // 使用 LUT 查表法加速處理，減少重複的 contrast / gamma(Math.pow) 計算
                 for (let i = 0; i < data.length; i += 4) {
                     const r = data[i];
                     const g = data[i + 1];
                     const b = data[i + 2];
-                    let gray = 0.299 * r + 0.587 * g + 0.114 * b;
-                    gray = gray * brightness;
-                    gray = (gray - 128) * contrast + 128;
-                    gray = 255 * Math.pow(clamp(gray) / 255, gamma);
-                    const value = clamp(gray);
+                    // 快速灰階化並取整
+                    const gray = (0.299 * r + 0.587 * g + 0.114 * b) | 0;
+                    const value = processingLut[gray];
                     data[i] = data[i + 1] = data[i + 2] = value;
                 }
 
@@ -2311,7 +2328,7 @@
             <div class="copyright-section">
                 <div class="app-info">
                     <span class="app-title">📘 查詢布可星球條碼小工具</span>
-                    <span class="app-version">v2.0</span>
+                    <span class="app-version">v2.0.1</span>
                 </div>
                 <div class="copyright-text">
                     <span>© 2025 教育用途 | Made with ❤️ in Taiwan</span>

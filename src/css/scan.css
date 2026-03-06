@@ -197,11 +197,11 @@ h1 span {
 }
 
 .scanner-controls .flash-btn {
-    flex: 0 0 calc(25% - 6px); /* 1/4 寬度，減去 gap 的一半 */
+    flex: 0 0 calc(30% - 6px); /* 稍微增加寬度比例，防止文字擠壓 */
 }
 
 .scanner-controls .btn {
-    flex: 0 0 calc(75% - 6px); /* 3/4 寬度，減去 gap 的一半 */
+    flex: 0 0 calc(70% - 6px);
 }
 
 /* 手電筒按鈕樣式 - 簡化版本 */
@@ -228,6 +228,7 @@ h1 span {
         inset 0 1px 0 rgba(255, 255, 255, 0.15);
     border: 2px solid rgba(255, 255, 255, 0.1);
     width: 100%;
+    white-space: nowrap;
 }
 
 .flash-btn.flash-off {
