@@ -638,6 +638,11 @@
                         </div>
                     `;
                 }
+
+                // 優化流程：更新結果後自動將結果卡並調整至畫面中央，讓使用者不用手動下滑
+                setTimeout(() => {
+                    elements.resultCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 100);
             }
 
             // 嘗試載入結果卡背景圖，找到可用路徑才套用

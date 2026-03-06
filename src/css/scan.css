@@ -503,6 +503,8 @@ video#preview {
     line-height: 1.7;
     min-height: 120px;
     font-size: 16px;
+    word-break: break-all;
+    overflow-wrap: break-word;
     box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3),
         0 6px 24px rgba(0, 0, 0, 0.15),
         inset 0 2px 0 rgba(255, 255, 255, 0.08),
@@ -881,10 +883,19 @@ video#preview {
 
     .button-row .btn-main {
         flex: 1;
-        font-size: 14px !important;
-        padding: 14px 20px !important;
+        font-size: 13px !important;
+        padding: 12px 14px !important;
         min-height: 52px;
+        white-space: normal;
+        line-height: 1.2;
     }
+
+    .result-card {
+        padding: 16px;
+        font-size: 14px;
+        border-radius: 16px;
+    }
+
 
     .success-popover {
         font-size: 14px;
