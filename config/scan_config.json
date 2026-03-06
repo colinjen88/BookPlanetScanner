@@ -5,9 +5,9 @@
     "heightRatio": 0.26
   },
   "processing": {
-    "contrast": 1.95,
-    "brightness": 1.8,
-    "gamma": 1.4,
+    "contrast": 1.35,
+    "brightness": 1.05,
+    "gamma": 0.9,
     "denoise": true,
     "sharpen": true
   },
