@@ -1,0 +1,2533 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<!--版本2.0-->
+
+<head>
+    <!-- Content Security Policy: restrict to necessary sources only -->
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://unpkg.com https://code.iconify.design 'wasm-unsafe-eval'; connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://stats.g.doubleclick.net https://code.iconify.design https://unpkg.com https://script.google.com https://script.googleusercontent.com; img-src 'self' data: blob: https://www.googletagmanager.com https://www.google-analytics.com https://stats.g.doubleclick.net https://code.iconify.design; frame-src 'self' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; form-action 'self'; worker-src 'self' blob:; media-src 'self' blob: data:; upgrade-insecure-requests;">
+    <!-- Google Tag Manager -->
+    <script>
+        (function (w, d, s, l, i) {
+            w[l] = w[l] || [];
+            w[l].push({
+                'gtm.start': new Date().getTime(),
+                event: 'gtm.js'
+            });
+            var f = d.getElementsByTagName(s)[0],
+                j = d.createElement(s),
+                dl = l != 'dataLayer' ? '&l=' + l : '';
+            j.async = true;
+            j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
+            f.parentNode.insertBefore(j, f);
+        })(window, document, 'script', 'dataLayer', 'GTM-N2CMV5HF');
+    </script>
+    <!-- End Google Tag Manager -->
+    <meta charset="UTF-8">
+    <title>布可星球條碼掃描器</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <script src="https://unpkg.com/@zxing/browser@latest"></script>
+    <script src="https://code.iconify.design/3/3.1.1/iconify.min.js"></script>
+    <link rel="stylesheet" href="src/css/scan.css?7">
+</head>
+
+<body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript>
+        <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-N2CMV5HF" height="0" width="0"
+            style="display:none;visibility:hidden">
+        </iframe>
+    </noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    <div class="container">
+        <div class="header-row">
+            <h1>📘<span>布可星球查詢</span></h1>
+        </div>
+        <p class="subtitle">掃描書本條碼，判別是否為布可星球選書。</p>
+
+        <div class="button-row">
+            <button class="btn btn-main" id="startBtn">🚀 開始掃描條碼</button>
+        </div>
+
+        <div class="scanner-controls" style="display: none;">
+            <button class="flash-btn flash-off" id="flashOffNew">💡開燈</button>
+            <button class="flash-btn flash-on" id="flashOnNew" style="display: none;">💡關燈</button>
+            <button class="btn btn-main danger" id="stopBtn">⏹️ 停止掃描</button>
+        </div>
+
+        <div class="video-shell" id="videoShell">
+            <video id="preview" autoplay playsinline muted></video>
+            <div class="roi-overlay" id="roiOverlay"></div>
+            <span class="hud-badge" id="engineBadge">待命中…</span>
+        </div>
+
+        <div class="result-card" id="resultCard">
+            ✅ 載入後請點「開始掃描」，將書本條碼置中並維持 15-20 公分距離。
+        </div>
+
+        <div class="status-board" id="statusBoard">
+            <div>📷 相機狀態：<span id="cameraStatus">尚未啟動</span></div>
+            <div>🧠 引擎狀態：<span id="engineStatus">尚未掃描</span></div>
+        </div>
+
+        <div class="success-popover" id="successPopover" style="display: none;">
+            ✅ 掃描成功！
+        </div>
+
+    </div>
+
+    <canvas id="processingCanvas" class="hidden"></canvas>
+    <canvas id="scratchCanvas" class="hidden"></canvas>
+
+    <script>
+        (() => {
+            // === DOM 元素快取 ===
+            const elements = {
+                startBtn: document.getElementById('startBtn'),
+                stopBtn: document.getElementById('stopBtn'),
+                scannerControls: document.querySelector('.scanner-controls'),
+                flashOffBtn: document.getElementById('flashOffNew'),
+                flashOnBtn: document.getElementById('flashOnNew'),
+                preview: document.getElementById('preview'),
+                roiOverlay: document.getElementById('roiOverlay'),
+                engineBadge: document.getElementById('engineBadge'),
+                cameraStatus: document.getElementById('cameraStatus'),
+                engineStatus: document.getElementById('engineStatus'),
+                resultCard: document.getElementById('resultCard'),
+                statusBoard: document.getElementById('statusBoard'),
+                successPopover: document.getElementById('successPopover'),
+                appVersion: document.querySelector('.app-version')
+            };
+
+            // === 日誌與除錯控制 ===
+            const DEBUG = (() => {
+                try {
+                    const params = new URLSearchParams(location.search);
+                    if (params.get('debug') === '1' || params.has('debug')) return true;
+                    const flag = localStorage.getItem('bookPlanetDebug');
+                    return flag === '1' || flag === 'true';
+                } catch (_) { return false; }
+            })();
+
+            // 預設靜默：關閉 console 與攔截錯誤（debug 模式才開啟）
+            if (!DEBUG) {
+                try {
+                    const noop = () => { };
+                    console.log = noop;
+                    console.info = noop;
+                    console.debug = noop;
+                    console.warn = noop;
+                    console.error = noop;
+                } catch (_) { }
+                // 避免未處理錯誤在主控台噴出
+                try {
+                    window.addEventListener('error', (e) => { e.preventDefault(); return false; });
+                    window.addEventListener('unhandledrejection', (e) => { e.preventDefault(); return false; });
+                } catch (_) { }
+            }
+
+            // === Canvas 元素和上下文 ===
+            const processingCanvas = document.getElementById('processingCanvas');
+            const processingCtx = processingCanvas.getContext('2d', { willReadFrequently: true });
+            const scratchCanvas = document.getElementById('scratchCanvas');
+            const scratchCtx = scratchCanvas.getContext('2d', { willReadFrequently: true });
+
+            // === 應用程式狀態 ===
+            const state = {
+                // 掃描狀態
+                running: false,
+                detectionBusy: false,
+                lastDetectionAt: 0,
+
+                // 資料狀態
+                bookList: [],
+                stream: null,
+                track: null,
+                flashOn: false,
+
+                // 檢測引擎
+                detectors: {
+                    barcodeDetector: null,
+                    multiFormatReader: null
+                },
+
+                // 統計資料
+                stats: {
+                    frames: 0,
+                    valid: 0,
+                    success: 0
+                },
+
+                // ROI 設定
+                roi: {
+                    enabled: true,
+                    widthRatio: 0.98,
+                    heightRatio: 0.26
+                },
+
+                // 影像處理設定
+                processing: {
+                    contrast: 1.95,
+                    brightness: 1.8,
+                    gamma: 1.4,
+                    denoise: true,
+                    sharpen: true
+                },
+
+                // 檢測設定
+                detection: {
+                    allowRotation: true,
+                    allowSlices: true,
+                    useBarcodeDetector: true,
+                    useZxing: true,
+                    intervalMs: 120,
+                    rotationAngles: [-12, -6, 6, 12],
+                    slices: [
+                        { label: '中心', topRatio: 0.25, heightRatio: 0.5 },
+                        { label: '上方', topRatio: 0.05, heightRatio: 0.45 },
+                        { label: '下方', topRatio: 0.5, heightRatio: 0.45 }
+                    ]
+                },
+
+                // 快取和日誌
+                lastCodes: [],
+                logSize: 120,
+
+                // 相機設定(off)
+                cameraConfig: {
+                    facingMode: 'environment',
+                    idealWidth: 1920,
+                    idealHeight: 1080,
+                    minWidth: 640,
+                    minHeight: 480
+                },
+
+                // UI 設定(off)
+                uiConfig: {
+                    loadingDelay: 700,
+                    popoverDuration: 1500,
+                    fadeOutDelay: 300
+                },
+
+                // 效能設定
+                maxCanvasWidth: 1280,
+                recentCodeHistorySize: 12,
+
+                // UI/操作防呆旗標
+                isStarting: false,
+                isStopping: false,
+                flashBusy: false
+            };
+
+            // === 常數定義 ===
+            const SUPPORTED_FORMATS = [
+                'ean_13', 'ean_8', 'upc_a', 'upc_e',
+                'code_128', 'code_39', 'code_93', 'itf', 'codabar'
+            ];
+
+            // ZXing 相關變數
+            let ZXING_AVAILABLE = false;
+            let ZXING_FORMATS = [];
+
+            // === 輔助函數 ===
+
+            /**
+             * 檢查 ZXing 是否可用（延遲檢查）
+             * @returns {boolean} ZXing 是否可用
+             */
+            function checkZXingAvailability() {
+                try {
+                    ZXING_AVAILABLE = typeof window.ZXing !== 'undefined' &&
+                        typeof window.ZXingBrowser !== 'undefined';
+
+                    if (ZXING_AVAILABLE) {
+                        ZXING_FORMATS = [
+                            ZXing.BarcodeFormat.EAN_13,
+                            ZXing.BarcodeFormat.EAN_8,
+                            ZXing.BarcodeFormat.UPC_A,
+                            ZXing.BarcodeFormat.UPC_E,
+                            ZXing.BarcodeFormat.CODE_128,
+                            ZXing.BarcodeFormat.CODE_39,
+                            ZXing.BarcodeFormat.ITF
+                        ];
+                    }
+                    return ZXING_AVAILABLE;
+                } catch (error) {
+                    log(`ZXing 檢查失敗：${error.message}`);
+                    ZXING_AVAILABLE = false;
+                    return false;
+                }
+            }
+
+            /**
+             * 限制數值在指定範圍內
+             * @param {number} value - 要限制的值
+             * @param {number} min - 最小值
+             * @param {number} max - 最大值
+             * @returns {number} 限制後的值
+             */
+            function clamp(value, min = 0, max = 255) {
+                return Math.min(max, Math.max(min, value));
+            }
+
+            /**
+             * 輸出帶時間戳的日誌訊息
+             * @param {string} message - 日誌訊息
+             */
+            function log(message) {
+                if (!DEBUG) return;
+                const timestamp = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+                try { console.log(`[${timestamp}] ${message}`); } catch (_) { }
+            }
+
+            /**
+             * 載入掃描設定檔案
+             * @returns {Promise<void>}
+             */
+            async function loadScanConfig() {
+                try {
+                    log('正在初始化掃描設定...');
+                    // 使用相對路徑，兼容本地和網站空間
+                    const configPath = './config/scan_config.json';
+                    const response = await fetch(configPath);
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    const config = await response.json();
+
+                    // 使用外部設定覆蓋預設值
+                    if (config.roi) {
+                        Object.assign(state.roi, config.roi);
+                    }
+                    if (config.processing) {
+                        Object.assign(state.processing, config.processing);
+                    }
+                    if (config.detection) {
+                        Object.assign(state.detection, config.detection);
+                    }
+                    if (config.performance) {
+                        if (config.performance.logSize) state.logSize = config.performance.logSize;
+                        if (config.performance.maxCanvasWidth) state.maxCanvasWidth = config.performance.maxCanvasWidth;
+                        if (config.performance.recentCodeHistorySize) state.recentCodeHistorySize = config.performance.recentCodeHistorySize;
+                    }
+                    if (config.camera) {
+                        state.cameraConfig = config.camera;
+                    }
+                    if (config.ui) {
+                        state.uiConfig = config.ui;
+                    }
+
+                    log('✅ 掃描設定載入成功');
+                    log(`ROI: ${state.roi.widthRatio}×${state.roi.heightRatio}, 處理: 對比度${state.processing.contrast}, 檢測間隔: ${state.detection.intervalMs}ms`);
+                    if (state.uiConfig && state.uiConfig.feedbackApiUrl) {
+                        log(`✅ 留言 API URL 已載入: ${state.uiConfig.feedbackApiUrl}`);
+                    } else {
+                        log(`⚠️ 留言 API URL 未設定`);
+                    }
+                } catch (error) {
+                    log(`⚠️ 掃描設定載入失敗，使用預設值: ${error.message}`);
+                    console.error('配置載入錯誤詳情:', error);
+                    // 如果載入失敗，保持使用程式碼中的預設值
+                    try { showTransientPopover('驚喜!!', 2000); } catch (e) { }
+                }
+            }
+
+            /**
+             * 非同步載入書籍清單資料
+             * @returns {Promise<void>}
+             */
+            async function loadBookList() {
+                try {
+                    // 僅使用完整版資料集
+                    try { localStorage.removeItem('bookPlanetDatasetMode'); } catch (e) { }
+                    const response = await fetch('data/books_list.json');
+                    state.bookList = await response.json();
+
+                    // 更新 UI 顯示載入結果
+                    elements.resultCard.classList.remove('error', 'success');
+                    elements.resultCard.textContent = `📚 已載入 ${state.bookList.length} 本布可星球選書，準備開始掃描。`;
+
+                    // 將 state 曝露給全域，供統計功能使用
+                    window.state = state;
+
+                    // 觸發自定義事件，通知書籍載入完成
+                    window.dispatchEvent(new CustomEvent('booksLoaded', {
+                        detail: { count: state.bookList.length }
+                    }));
+                } catch (error) {
+                    elements.resultCard.classList.add('error');
+                    elements.resultCard.textContent = '❌ 書單載入失敗，請確認資料檔是否存在。';
+                    log(`書單載入失敗：${error.message}`);
+
+                    // 載入失敗時也觸發事件
+                    window.dispatchEvent(new CustomEvent('booksLoadError'));
+                }
+            }
+
+            function initDetectors() {
+                // 初始化 BarcodeDetector
+                if ('BarcodeDetector' in window) {
+                    try {
+                        state.detectors.barcodeDetector = new BarcodeDetector({ formats: SUPPORTED_FORMATS });
+                        log('✅ BarcodeDetector 已啟用');
+                    } catch (error) {
+                        log(`⚠️ BarcodeDetector 初始化失敗：${error.message}`);
+                        state.detectors.barcodeDetector = null;
+                        state.detection.useBarcodeDetector = false;
+                    }
+                } else {
+                    log('ℹ️ 此裝置尚未支援 BarcodeDetector 原生 API。');
+                    state.detectors.barcodeDetector = null;
+                    state.detection.useBarcodeDetector = false;
+                }
+
+                // 延遲初始化 ZXing
+                setTimeout(() => {
+                    if (!checkZXingAvailability()) {
+                        log('ℹ️ ZXing Browser 套件未完全載入，將主要依賴原生引擎。');
+                        state.detectors.multiFormatReader = null;
+                        state.detection.useZxing = false;
+                        return;
+                    }
+
+                    try {
+                        const hints = new Map();
+                        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, ZXING_FORMATS);
+                        hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+                        const reader = new ZXing.MultiFormatReader();
+                        reader.setHints(hints);
+                        state.detectors.multiFormatReader = reader;
+                        log('✅ ZXing MultiFormatReader 已啟用');
+                    } catch (error) {
+                        log(`⚠️ ZXing 初始化失敗：${error.message}`);
+                        state.detectors.multiFormatReader = null;
+                        state.detection.useZxing = false;
+                    }
+                }, 1000); // 延遲1秒初始化ZXing
+            }
+
+            function updateRoiOverlay() {
+                if (!state.roi.enabled) {
+                    elements.roiOverlay.style.display = 'none';
+                    return;
+                }
+                const video = elements.preview;
+                if (!video.videoWidth || !video.videoHeight) {
+                    elements.roiOverlay.style.display = 'none';
+                    return;
+                }
+                const container = document.getElementById('videoShell');
+                const rect = container.getBoundingClientRect();
+                const roiWidth = rect.width * state.roi.widthRatio;
+                const roiHeight = rect.height * state.roi.heightRatio;
+                elements.roiOverlay.style.display = 'block';
+                elements.roiOverlay.style.width = `${roiWidth}px`;
+                elements.roiOverlay.style.height = `${roiHeight}px`;
+                elements.roiOverlay.style.left = `${(rect.width - roiWidth) / 2}px`;
+                elements.roiOverlay.style.top = `${(rect.height - roiHeight) / 2}px`;
+            }
+
+            function resetStats() {
+                state.stats.frames = 0;
+                state.stats.valid = 0;
+                state.stats.success = 0;
+                state.lastCodes = [];
+                updateStatsDisplay();
+            }
+
+            function updateStatsDisplay() {
+                // Stats tracking kept for internal logic but not displayed
+            }
+
+            function pushRecentCode(code) {
+                state.lastCodes.push(code);
+                if (state.lastCodes.length > state.recentCodeHistorySize) state.lastCodes.shift();
+            }
+
+            function wasRecentlySeen(code) {
+                return state.lastCodes.includes(code);
+            }
+
+            function applyImageProcessing(imageData, width, height) {
+                const data = imageData.data;
+                const contrast = state.processing.contrast;
+                const brightness = state.processing.brightness;
+                const gamma = state.processing.gamma;
+
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    let gray = 0.299 * r + 0.587 * g + 0.114 * b;
+                    gray = gray * brightness;
+                    gray = (gray - 128) * contrast + 128;
+                    gray = 255 * Math.pow(clamp(gray) / 255, gamma);
+                    const value = clamp(gray);
+                    data[i] = data[i + 1] = data[i + 2] = value;
+                }
+
+                if (state.processing.denoise) {
+                    applyBoxBlur(imageData, width, height);
+                }
+
+                if (state.processing.sharpen) {
+                    applyUnsharpMask(imageData, width, height);
+                }
+            }
+
+            function applyBoxBlur(imageData, width, height) {
+                const data = imageData.data;
+                const original = new Uint8ClampedArray(data);
+                const kernel = [
+                    1, 1, 1,
+                    1, 1, 1,
+                    1, 1, 1
+                ];
+                const kernelWeight = 9;
+                for (let y = 1; y < height - 1; y++) {
+                    for (let x = 1; x < width - 1; x++) {
+                        let sum = 0;
+                        let idxKernel = 0;
+                        for (let ky = -1; ky <= 1; ky++) {
+                            for (let kx = -1; kx <= 1; kx++) {
+                                const idx = ((y + ky) * width + (x + kx)) * 4;
+                                sum += original[idx] * kernel[idxKernel++];
+                            }
+                        }
+                        const value = clamp(sum / kernelWeight);
+                        const target = (y * width + x) * 4;
+                        data[target] = data[target + 1] = data[target + 2] = value;
+                    }
+                }
+            }
+
+            // === 影像處理功能 ===
+
+            /**
+             * 應用非銳化遮罩濾鏡增強影像清晰度
+             * @param {ImageData} imageData - 要處理的影像資料
+             * @param {number} width - 影像寬度
+             * @param {number} height - 影像高度
+             */
+            function applyUnsharpMask(imageData, width, height) {
+                const data = imageData.data;
+                const original = new Uint8ClampedArray(data);
+                const amount = 0.6; // 銳化強度
+
+                for (let y = 1; y < height - 1; y++) {
+                    for (let x = 1; x < width - 1; x++) {
+                        const idx = (y * width + x) * 4;
+                        const center = original[idx];
+                        const north = original[idx - width * 4];
+                        const south = original[idx + width * 4];
+                        const east = original[idx + 4];
+                        const west = original[idx - 4];
+
+                        // 拉普拉斯邊緣檢測
+                        const laplace = (4 * center) - north - south - east - west;
+                        const value = clamp(center + amount * laplace);
+
+                        // 應用到 RGB 三個通道
+                        data[idx] = data[idx + 1] = data[idx + 2] = value;
+                    }
+                }
+            }
+
+            /**
+             * 計算感興趣區域（ROI）的座標和大小
+             * @param {number} videoWidth - 影片寬度
+             * @param {number} videoHeight - 影片高度
+             * @returns {Object} ROI 區域資訊 {sx, sy, sw, sh}
+             */
+            function computeRoi(videoWidth, videoHeight) {
+                if (!state.roi.enabled) {
+                    return { sx: 0, sy: 0, sw: videoWidth, sh: videoHeight };
+                }
+
+                const sw = videoWidth * state.roi.widthRatio;
+                const sh = videoHeight * state.roi.heightRatio;
+                const sx = (videoWidth - sw) / 2;
+                const sy = (videoHeight - sh) / 2;
+
+                return { sx, sy, sw, sh };
+            }
+
+            // === UI 更新功能 ===
+
+            /**
+             * 根據匹配結果更新結果卡片顯示
+             * @param {Object} match - 匹配結果物件 {found, original, matchedCode}
+             */
+            function showLoadingCard() {
+                elements.resultCard.classList.remove('error', 'success');
+                // 清除成功背景圖（避免殘留）
+                elements.resultCard.classList.remove('has-bg');
+                elements.resultCard.style.removeProperty('--result-bg');
+                elements.resultCard.innerHTML = `
+                    <div class="loading-card">
+                        <div class="loading-spinner">
+                            <div class="spinner"></div>
+                        </div>
+                        <div class="loading-text">
+                            正在查詢書籍資訊...
+                        </div>
+                    </div>
+                `;
+            }
+
+            function updateResultCardForMatch(match) {
+                if (match.found) {
+                    // 顯示成功匹配結果
+                    elements.resultCard.classList.remove('error');
+                    elements.resultCard.classList.add('success');
+                    // 套用背景圖（20% 透明，在 CSS 控制），嘗試多個常見路徑，優先使用 bg.jpg
+                    setResultCardBg([
+                        'src/img/bg.jpg',
+                        'bg.jpg',
+                        'src/bg.jpg',
+                        'images/bg.jpg',
+                        'assets/bg.jpg',
+                        // 後備：先前的預設圖
+                        'src/img/success-bg.png'
+                    ]);
+                    elements.resultCard.innerHTML = `
+                        <div class="success-title">
+                            <span class="success-icon">🎉</span>
+                            恭喜找到『布可星球選書』
+                        </div>
+                        <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">
+                            ${match.found.書名}
+                        </div>
+                        <div style="margin-bottom: 4px;">
+                            <strong>ISBN：</strong>${match.found.ISBN}
+                        </div>
+                        <div style="margin-bottom: 12px;">
+                            <strong>適合對象：</strong>
+                            ${renderAudienceChips(match.found.適合對象)}
+                        </div>
+                        <div style="font-size: 13px; color: var(--text-muted); padding-top: 8px; border-top: 1px solid rgba(16, 185, 129, 0.2);">
+                            匹配條碼：${match.matchedCode}
+                        </div>
+                    `;
+                } else {
+                    // 顯示未找到的結果
+                    elements.resultCard.classList.remove('success');
+                    // 未匹配時移除任何背景圖
+                    elements.resultCard.classList.remove('has-bg');
+                    elements.resultCard.style.removeProperty('--result-bg');
+                    elements.resultCard.classList.add('error');
+                    elements.resultCard.innerHTML = `
+                        <div class="error-title">
+                            <span class="error-icon">⚠️</span>
+                            未在布可星球書單中
+                        </div>
+                        <div style="font-size: 16px; margin: 12px 0; font-weight: 500;">
+                            此條碼不在布可星球選書清單中
+                        </div>
+                        <div style="background: rgba(0, 0, 0, 0.3); padding: 12px; border-radius: 12px; margin-top: 16px;">
+                            <div style="font-size: 13px; margin-bottom: 4px; color: var(--text-muted);">
+                                <strong>掃描條碼：</strong>${match.original}
+                            </div>
+                            <div style="font-size: 13px; color: var(--text-muted);">
+                                <strong>處理結果：</strong>${match.matchedCode || '無法識別'}
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            // 嘗試載入結果卡背景圖，找到可用路徑才套用
+            function setResultCardBg(candidates) {
+                if (!Array.isArray(candidates) || candidates.length === 0) return;
+                let idx = 0;
+                const tryNext = () => {
+                    if (idx >= candidates.length) {
+                        // 全部失敗就不顯示背景
+                        elements.resultCard.classList.remove('has-bg');
+                        elements.resultCard.style.removeProperty('--result-bg');
+                        return;
+                    }
+                    const url = candidates[idx++];
+                    const img = new Image();
+                    img.onload = () => {
+                        const abs = new URL(url, document.baseURI).href;
+                        elements.resultCard.style.setProperty('--result-bg', `url('${abs}')`);
+                        elements.resultCard.classList.add('has-bg');
+                    };
+                    img.onerror = tryNext;
+                    img.src = url;
+                };
+                tryNext();
+            }
+
+            // 適合對象顏色標籤渲染
+            function renderAudienceChips(audienceRaw) {
+                if (!audienceRaw) return '<span class="audience-chip chip-slate">未標示</span>';
+                // 支援多種分隔符號：/、、，、空白
+                const parts = String(audienceRaw)
+                    .split(/[\/、，,\s]+/)
+                    .map(s => s.trim())
+                    .filter(Boolean);
+                if (parts.length === 0) return '<span class="audience-chip chip-slate">未標示</span>';
+                const chips = parts.map(p => {
+                    const cls = mapAudienceToChip(p);
+                    return `<span class="audience-chip ${cls}" title="${p}">${p}</span>`;
+                });
+                return `<span class="audience-list">${chips.join('')}</span>`;
+            }
+
+            function mapAudienceToChip(label) {
+                const l = (label || '').toString().toLowerCase();
+                // 常見中文分類
+                if (l.includes('幼兒') || l.includes('學齡前') || l.includes('低幼')) return 'chip-rose';
+                if (l.includes('低年') || l.includes('低年級')) return 'chip-amber';
+                if (l.includes('中年') || l.includes('中年級')) return 'chip-lime';
+                if (l.includes('高年') || l.includes('高年級')) return 'chip-teal';
+                if (l.includes('中高')) return 'chip-sky';
+                if (l.includes('國中') || l.includes('青少年') || l.includes('中學生')) return 'chip-indigo';
+                if (l.includes('高中')) return 'chip-violet';
+                if (l.includes('成人') || l.includes('教師') || l.includes('家長')) return 'chip-slate';
+
+                // 年齡區間（數字）
+                if (/\d{1,2}\s*[-~至]\s*\d{1,2}/.test(l)) return 'chip-sky';
+                if (/^\d{1,2}\+?$/.test(l)) return 'chip-sky';
+
+                // 預設
+                return 'chip-slate';
+            }
+
+            // 隱藏測試：點擊版本號，模擬「找到選書」畫面
+            function triggerTestSuccessUI() {
+                // 減少干擾：暫停掃描
+                try { stopScanner(false); } catch (e) { }
+                // 標記測試模式，避免計次
+                window.__TEST_SUCCESS = true;
+
+                // 若有書單，取第一本當做示例，否則使用假資料
+                const sample = (state.bookList && state.bookList.length > 0) ? state.bookList[0] : {
+                    書名: '測試用 布可選書',
+                    ISBN: '9781234567890',
+                    適合對象: '中高年級'
+                };
+                const match = {
+                    found: sample,
+                    matchedCode: (sample.ISBN || '9781234567890').toString(),
+                    original: 'TEST'
+                };
+
+                // 模擬真實流程：先 Loading 再顯示成功
+                showLoadingCard();
+                updateEngineBadge('測試模式', true);
+                elements.engineStatus.textContent = '測試模式';
+
+                setTimeout(() => {
+                    updateResultCardForMatch(match);
+                    showSuccessPopover();
+                }, state.uiConfig.loadingDelay);
+            }
+
+            // === 條碼處理功能 ===
+
+            /**
+             * 進階條碼處理器，產生多種可能的ISBN格式
+             * @param {string} rawCode - 原始條碼字串
+             * @returns {Array<string>} 處理後的可能ISBN格式陣列（最少8位數）
+             */
+            function advancedBarcodeProcessor(rawCode) {
+                const cleaned = rawCode.replace(/\D/g, ''); // 移除非數字字符
+                const results = new Set();
+
+                if (!cleaned) return [];
+
+                // 加入清理後的原始碼
+                results.add(cleaned);
+
+                // 標準長度處理
+                if (cleaned.length === 18) results.add(cleaned.slice(0, 13));
+                if (cleaned.length === 15) results.add(cleaned.slice(0, 10));
+                if (cleaned.length > 13) results.add(cleaned.slice(0, 13));
+                if (cleaned.length > 10) results.add(cleaned.slice(0, 10));
+
+                // 去除最後一位（可能是校驗碼）
+                if (cleaned.length > 8) {
+                    results.add(cleaned.slice(0, cleaned.length - 1));
+                }
+
+                // 滑動視窗處理（尋找可能的ISBN）
+                if (cleaned.length >= 10) {
+                    for (let i = 0; i <= cleaned.length - 10; i++) {
+                        const slice13 = cleaned.slice(i, i + 13);
+                        const slice10 = cleaned.slice(i, i + 10);
+
+                        if (slice13.length === 13) results.add(slice13);
+                        if (slice10.length === 10) results.add(slice10);
+                    }
+                }
+
+                // 過濾結果，保留至少8位數的候選碼
+                return Array.from(results).filter(code => code.length >= 8);
+            }
+
+            /**
+             * 智慧書籍匹配功能，使用多種策略尋找書籍
+             * @param {string} rawCode - 原始條碼字串
+             * @returns {Object} 匹配結果 {found, original, matchedCode}
+             */
+            function intelligentBookMatch(rawCode) {
+                const candidates = advancedBarcodeProcessor(rawCode);
+
+                for (const candidate of candidates) {
+                    const match = state.bookList.find(book => {
+                        if (!book.ISBN) return false;
+
+                        const normalized = book.ISBN.replace(/\D/g, '');
+
+                        // 完全匹配
+                        if (normalized === candidate) return true;
+
+                        // 相同長度但最後一位不同（校驗碼差異）
+                        if (normalized.length === candidate.length &&
+                            normalized.substring(0, normalized.length - 1) === candidate.substring(0, candidate.length - 1)) {
+                            return true;
+                        }
+
+                        // 部分包含匹配（允許小幅長度差異）
+                        if (normalized.includes(candidate) || candidate.includes(normalized)) {
+                            return Math.abs(normalized.length - candidate.length) <= 2;
+                        }
+
+                        return false;
+                    });
+
+                    if (match) {
+                        return {
+                            found: match,
+                            matchedCode: candidate,
+                            original: rawCode
+                        };
+                    }
+                }
+
+                return {
+                    found: null,
+                    matchedCode: candidates[0] || '',
+                    original: rawCode
+                };
+            }
+
+            // === 條碼偵測功能 ===
+
+            /**
+             * 使用原生 BarcodeDetector API 進行條碼偵測
+             * @param {HTMLCanvasElement} canvas - 要偵測的 canvas 元素
+             * @returns {Promise<Object|null>} 偵測結果或 null
+             */
+            async function detectWithBarcodeDetector(canvas) {
+                const detector = state.detectors.barcodeDetector;
+                if (!detector || !state.detection.useBarcodeDetector) return null;
+
+                try {
+                    const detections = await detector.detect(canvas);
+                    if (!detections || detections.length === 0) return null;
+
+                    // 優先選擇有效長度的條碼，否則選擇第一個
+                    const best = detections.find(det =>
+                        det.rawValue && det.rawValue.replace(/\D/g, '').length >= 8
+                    ) || detections[0];
+                    if (!best || !best.rawValue) return null;
+
+                    return {
+                        text: best.rawValue,
+                        engine: 'BarcodeDetector',
+                        format: best.format || 'Unknown'
+                    };
+                } catch (error) {
+                    log(`BarcodeDetector 失敗：${error.message}`);
+                    return null;
+                }
+            }
+
+            /**
+             * 使用 ZXing 函式庫進行條碼偵測
+             * @param {HTMLCanvasElement} canvas - 要偵測的 canvas 元素
+             * @returns {Object|null} 偵測結果或 null
+             */
+            function detectWithZxing(canvas) {
+                const reader = state.detectors.multiFormatReader;
+                if (!reader || !state.detection.useZxing || !checkZXingAvailability()) {
+                    return null;
+                }
+
+                try {
+                    const luminanceSource = new ZXingBrowser.HTMLCanvasElementLuminanceSource(canvas);
+                    const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
+                    const result = reader.decodeWithState(binaryBitmap);
+
+                    // 重置讀取器狀態
+                    if (reader.reset) {
+                        reader.reset();
+                    }
+
+                    if (!result) return null;
+
+                    return {
+                        text: result.getText(),
+                        engine: 'ZXing',
+                        format: result.getBarcodeFormat ? result.getBarcodeFormat().toString() : 'Unknown'
+                    };
+                } catch (error) {
+                    try {
+                        if (reader.reset) {
+                            reader.reset();
+                        }
+                    } catch (resetError) {
+                        log(`ZXing reset 失敗：${resetError.message}`);
+                    }
+
+                    if (!(error instanceof ZXing.NotFoundException)) {
+                        log(`ZXing 失敗：${error.message}`);
+                    }
+                    return null;
+                }
+            }
+
+            async function detectFromCanvas(canvas, stageLabel) {
+                let detection = await detectWithBarcodeDetector(canvas);
+                if (detection) {
+                    detection.stage = stageLabel;
+                    return detection;
+                }
+                detection = detectWithZxing(canvas);
+                if (detection) {
+                    detection.stage = stageLabel;
+                    return detection;
+                }
+                return null;
+            }
+
+            async function tryDetections() {
+                const baseDetection = await detectFromCanvas(processingCanvas, '基礎影像');
+                if (baseDetection) return baseDetection;
+
+                if (state.detection.allowRotation) {
+                    for (const angle of state.detection.rotationAngles) {
+                        scratchCanvas.width = processingCanvas.width;
+                        scratchCanvas.height = processingCanvas.height;
+                        scratchCtx.save();
+                        scratchCtx.clearRect(0, 0, scratchCanvas.width, scratchCanvas.height);
+                        scratchCtx.translate(scratchCanvas.width / 2, scratchCanvas.height / 2);
+                        scratchCtx.rotate(angle * Math.PI / 180);
+                        scratchCtx.drawImage(processingCanvas, -processingCanvas.width / 2, -processingCanvas.height / 2);
+                        scratchCtx.restore();
+                        const rotatedDetection = await detectFromCanvas(scratchCanvas, `旋轉 ${angle}°`);
+                        if (rotatedDetection) return rotatedDetection;
+                    }
+                }
+
+                if (state.detection.allowSlices) {
+                    for (const slice of state.detection.slices) {
+                        const sliceHeight = Math.round(processingCanvas.height * slice.heightRatio);
+                        const sliceTop = Math.round(processingCanvas.height * slice.topRatio);
+                        scratchCanvas.width = processingCanvas.width;
+                        scratchCanvas.height = sliceHeight;
+                        scratchCtx.clearRect(0, 0, scratchCanvas.width, scratchCanvas.height);
+                        scratchCtx.drawImage(
+                            processingCanvas,
+                            0,
+                            sliceTop,
+                            processingCanvas.width,
+                            sliceHeight,
+                            0,
+                            0,
+                            scratchCanvas.width,
+                            sliceHeight
+                        );
+                        const sliceDetection = await detectFromCanvas(scratchCanvas, `掃描線-${slice.label}`);
+                        if (sliceDetection) return sliceDetection;
+                    }
+                }
+
+                return null;
+            }
+
+            function updateEngineBadge(text, success = false) {
+                elements.engineBadge.textContent = text;
+                elements.engineBadge.style.background = success ? 'rgba(0, 230, 118, 0.8)' : 'rgba(0, 0, 0, 0.6)';
+                elements.engineBadge.style.borderColor = success ? 'rgba(0, 230, 118, 0.9)' : 'rgba(255, 255, 255, 0.2)';
+                elements.engineBadge.style.color = success ? '#00281f' : '#e0f2f1';
+            }
+
+            // 隱藏 popover 的輔助函數
+            function hidePopover() {
+                const popover = elements.successPopover;
+                if (popover) {
+                    popover.classList.remove('show', 'fade-out');
+                    popover.style.display = 'none';
+                }
+            }
+
+            function showSuccessPopover() {
+                const resultCard = elements.resultCard;
+                const popover = elements.successPopover;
+
+                log('🎉 開始顯示成功 Popover');
+                log(`ResultCard: ${resultCard ? '✅找到' : '❌未找到'}`);
+                log(`Popover: ${popover ? '✅找到' : '❌未找到'}`);
+
+                if (!resultCard || !popover) {
+                    log('⚠️ Popover 或 ResultCard 元素未找到');
+                    return;
+                }
+
+                // 重置所有樣式和類別
+                popover.classList.remove('show', 'fade-out');
+                popover.style.display = 'block'; // 顯示元素
+                popover.style.position = 'fixed';
+                popover.style.zIndex = '9999';
+
+                const rect = resultCard.getBoundingClientRect();
+                log(`ResultCard 位置: left=${rect.left}, top=${rect.top}, width=${rect.width}, height=${rect.height}`);
+
+                // 計算popover位置（相對於視窗，在 resultCard 上緣）
+                const popoverLeft = rect.left + (rect.width / 2);
+                const popoverTop = rect.top - 60; // 在 resultCard 上方 60px
+
+                popover.style.left = `${popoverLeft}px`;
+                popover.style.top = `${popoverTop}px`;
+                popover.style.transform = 'translateX(-50%)';
+
+                log(`Popover 位置設定: left=${popoverLeft}px, top=${popoverTop}px`);
+                log('🎉 Popover 樣式已設定，準備顯示動畫');
+
+                // 強制瀏覽器重繪
+                popover.offsetHeight;
+
+                // 顯示動畫
+                requestAnimationFrame(() => {
+                    log('⚡ 執行顯示動畫：添加 show 類別');
+                    popover.classList.add('show');
+
+                    // 檢查是否成功添加
+                    setTimeout(() => {
+                        const hasShow = popover.classList.contains('show');
+                        const computedStyle = window.getComputedStyle(popover);
+                        log(`動畫檢查: show類別=${hasShow}, opacity=${computedStyle.opacity}, transform=${computedStyle.transform}`);
+                    }, 100);
+                });
+
+                // 延遲後淡出（使用設定檔案中的時間）
+                setTimeout(() => {
+                    log('⏰ 開始淡出動畫');
+                    popover.classList.add('fade-out');
+                    setTimeout(() => {
+                        log('🔚 清除 Popover 類別和樣式');
+                        popover.classList.remove('show', 'fade-out');
+                        popover.style.position = 'absolute'; // 恢復原始定位
+                        popover.style.display = 'none'; // 隱藏元素
+                    }, state.uiConfig.fadeOutDelay);
+                }, state.uiConfig.popoverDuration);
+            }
+
+            // 顯示短暫訊息的 Popover（自訂文字與顯示時間）
+            function showTransientPopover(message, durationMs = 2000) {
+                const resultCard = elements.resultCard;
+                const popover = elements.successPopover;
+
+                if (!resultCard || !popover) {
+                    log('⚠️ Popover 或 ResultCard 元素未找到（transient）');
+                    return;
+                }
+
+                // 設定顯示文字並重置樣式
+                popover.textContent = message;
+                popover.classList.remove('show', 'fade-out');
+                popover.style.display = 'block';
+                popover.style.position = 'fixed';
+                popover.style.zIndex = '9999';
+
+                // 參考 resultCard 位置
+                const rect = resultCard.getBoundingClientRect();
+                const popoverLeft = rect.left + (rect.width / 2);
+                const popoverTop = rect.top - 60;
+                popover.style.left = `${popoverLeft}px`;
+                popover.style.top = `${popoverTop}px`;
+                popover.style.transform = 'translateX(-50%)';
+
+                // 觸發進場動畫
+                popover.offsetHeight;
+                requestAnimationFrame(() => {
+                    popover.classList.add('show');
+                });
+
+                // durationMs 後淡出並隱藏
+                setTimeout(() => {
+                    popover.classList.add('fade-out');
+                    setTimeout(() => {
+                        popover.classList.remove('show', 'fade-out');
+                        popover.style.position = 'absolute';
+                        popover.style.display = 'none';
+                    }, state.uiConfig.fadeOutDelay);
+                }, durationMs);
+            }
+
+            async function processFrame() {
+                const video = elements.preview;
+                if (!video.videoWidth || !video.videoHeight) return null;
+
+                const now = performance.now();
+                if (now - state.lastDetectionAt < state.detection.intervalMs) return null;
+                state.lastDetectionAt = now;
+
+                const roi = computeRoi(video.videoWidth, video.videoHeight);
+                const targetWidth = Math.min(state.maxCanvasWidth, Math.round(roi.sw));
+                const targetHeight = Math.round(targetWidth * (roi.sh / roi.sw));
+                processingCanvas.width = targetWidth;
+                processingCanvas.height = targetHeight;
+                processingCtx.drawImage(video, roi.sx, roi.sy, roi.sw, roi.sh, 0, 0, targetWidth, targetHeight);
+
+                const imageData = processingCtx.getImageData(0, 0, targetWidth, targetHeight);
+                applyImageProcessing(imageData, targetWidth, targetHeight);
+                processingCtx.putImageData(imageData, 0, 0);
+
+                const detection = await tryDetections();
+                state.stats.frames++;
+                updateStatsDisplay();
+                return detection;
+            }
+
+            async function scanLoop() {
+                while (state.running) {
+                    await new Promise(resolve => requestAnimationFrame(resolve));
+                    if (!state.running) break;
+                    if (state.detectionBusy) continue;
+                    state.detectionBusy = true;
+                    try {
+                        const detection = await processFrame();
+                        if (detection) {
+                            handleDetection(detection);
+                        }
+                    } catch (error) {
+                        log(`掃描迴圈錯誤：${error.message}`);
+                    } finally {
+                        state.detectionBusy = false;
+                    }
+                }
+            }
+
+            function handleDetection(detection) {
+                const cleaned = detection.text.replace(/\s+/g, '');
+                if (cleaned.replace(/\D/g, '').length < 8) {
+                    log(`略過短碼：${cleaned}`);
+                    return;
+                }
+
+                if (wasRecentlySeen(cleaned)) {
+                    return;
+                }
+                pushRecentCode(cleaned);
+
+                state.stats.valid++;
+                updateStatsDisplay();
+
+                log(`✅ ${detection.engine}(${detection.stage}) → ${cleaned}`);
+                elements.engineStatus.textContent = `${detection.engine} @ ${detection.stage}`;
+                updateEngineBadge(`${detection.engine} 命中`, true);
+
+                const match = intelligentBookMatch(cleaned);
+                if (match.found) {
+                    state.stats.success++;
+                }
+                updateStatsDisplay();
+
+                // 先顯示 Loading 畫面
+                showLoadingCard();
+
+                // 延遲顯示實際結果（使用設定檔案中的延遲時間）
+                setTimeout(() => {
+                    updateResultCardForMatch(match);
+
+                    if (!match.found) {
+                        setTimeout(() => {
+                            updateEngineBadge('持續掃描中…');
+                        }, 2000);
+                        return;
+                    }
+
+                    log('🎯 找到匹配書籍，準備顯示 popover');
+
+                    // 顯示成功popover
+                    showSuccessPopover();
+                    stopScanner(false);
+                }, state.uiConfig.loadingDelay);
+            }
+
+            async function startScanner() {
+                if (state.running || state.isStarting || state.isStopping) return;
+                state.isStarting = true;
+                // 立即防重入與避免連點
+                elements.startBtn.disabled = true;
+
+                try {
+                    resetStats();
+                    updateEngineBadge('啟動攝影機…');
+                    elements.engineStatus.textContent = '啟動中';
+                    log('正在初始化攝影機…');
+
+                    // 嘗試使用簡化的攝影機設定
+                    try {
+                        state.stream = await navigator.mediaDevices.getUserMedia({
+                            video: {
+                                facingMode: state.cameraConfig.facingMode,
+                                width: { ideal: state.cameraConfig.idealWidth, min: state.cameraConfig.minWidth },
+                                height: { ideal: state.cameraConfig.idealHeight, min: state.cameraConfig.minHeight }
+                            },
+                            audio: false
+                        });
+                    } catch (error) {
+                        // 如果失敗，嘗試更基本的設定
+                        log('嘗試基本攝影機設定...');
+                        state.stream = await navigator.mediaDevices.getUserMedia({
+                            video: { facingMode: state.cameraConfig.facingMode },
+                            audio: false
+                        });
+                    }
+
+                    state.track = state.stream.getVideoTracks()[0];
+                    elements.preview.srcObject = state.stream;
+                    await elements.preview.play();
+
+                    updateCameraStatusText();
+                    updateRoiOverlay();
+
+                    elements.startBtn.style.display = 'none';
+                    elements.scannerControls.style.display = 'flex';
+                    elements.stopBtn.disabled = false;
+                    elements.stopBtn.style.display = 'inline-block';
+
+                    const capabilities = state.track.getCapabilities ? state.track.getCapabilities() : {};
+                    if (capabilities && capabilities.torch) {
+                        elements.flashOffBtn.disabled = false;
+                        elements.flashOnBtn.disabled = false;
+                        // 預設顯示關閉狀態按鈕
+                        elements.flashOffBtn.style.display = 'inline-block';
+                        elements.flashOnBtn.style.display = 'none';
+                        state.flashOn = false;
+                    } else {
+                        elements.flashOffBtn.disabled = true;
+                        elements.flashOnBtn.disabled = true;
+                        elements.flashOffBtn.style.display = 'inline-block';
+                        elements.flashOnBtn.style.display = 'none';
+                    }
+
+                    state.flashOn = false;
+                    state.running = true;
+                    state.isStarting = false;
+                    elements.startBtn.disabled = false;
+                    elements.resultCard.classList.remove('error', 'success');
+                    elements.resultCard.textContent = '掃描中，請將條碼置於畫面中央並保持穩定。';
+                    elements.engineStatus.textContent = '掃描中';
+                    scanLoop();
+                    log('📽️ 掃描迴圈啟動');
+                    updateEngineBadge('掃描中…');
+                } catch (error) {
+                    log(`❌ 無法啟動攝影機：${error.message}`);
+                    updateEngineBadge('啟動失敗');
+                    elements.resultCard.classList.add('error');
+
+                    let errorMessage = '攝影機啟動失敗';
+                    if (error.name === 'NotAllowedError') {
+                        errorMessage = '❌ 攝影機權限被拒絕，請允許此網站使用攝影機。';
+                    } else if (error.name === 'NotFoundError') {
+                        errorMessage = '❌ 找不到攝影機設備，請確認攝影機已連接。';
+                    } else if (error.name === 'NotReadableError') {
+                        errorMessage = '❌ 攝影機正被其他應用程式使用中。';
+                    } else {
+                        errorMessage = `❌ 攝影機啟動失敗：${error.message}`;
+                    }
+
+                    elements.resultCard.textContent = errorMessage;
+                    stopScanner(true);
+                } finally {
+                    // 若未成功進入 running 狀態，解除啟動鎖並恢復按鈕
+                    if (!state.running) {
+                        state.isStarting = false;
+                        elements.startBtn.disabled = false;
+                    }
+                }
+            }
+
+            function stopScanner(resetStatsToo = true) {
+                if (state.isStopping) return;
+                state.isStopping = true;
+                state.running = false;
+                state.detectionBusy = false;
+                if (state.track) {
+                    try { state.track.stop(); } catch (error) { log(`停止 track 失敗：${error.message}`); }
+                    state.track = null;
+                }
+                if (state.stream) {
+                    state.stream.getTracks().forEach(track => track.stop());
+                    state.stream = null;
+                }
+                elements.preview.srcObject = null;
+                updateEngineBadge('已停止');
+                elements.engineStatus.textContent = '已停止';
+                // 確保停止按鈕在停止後被隱藏與停用
+                elements.stopBtn.disabled = true;
+                elements.stopBtn.style.display = 'none';
+                elements.startBtn.style.display = 'inline-flex';
+                elements.scannerControls.style.display = 'none';
+                elements.flashOffBtn.disabled = true;
+                elements.flashOnBtn.disabled = true;
+                elements.flashOffBtn.style.display = 'none';
+                // 確保 flashOnNew (id="flashOnNew") 按鈕完全隱藏
+                elements.flashOnBtn.style.display = 'none';
+                // 額外確保使用 CSS display:none 隱藏 flashOnNew 按鈕
+                const flashOnNewBtn = document.getElementById('flashOnNew');
+                if (flashOnNewBtn) {
+                    flashOnNewBtn.style.display = 'none';
+                }
+                state.flashOn = false;
+                updateCameraStatusText();
+                if (resetStatsToo) {
+                    resetStats();
+                }
+                // 停止流程完成，解除停止鎖
+                state.isStopping = false;
+                // 確保可再次啟動
+                elements.startBtn.disabled = false;
+            }
+
+            /**
+             * 開啟手電筒功能 - UI-first 模式
+             * 第一步：立即更新UI狀態（零延遲）
+             * 第二步：執行硬體操作（可能有延遲）
+             */
+            async function turnOnFlash() {
+                if (!state.track || state.flashBusy) return;
+                state.flashBusy = true;
+                elements.flashOffBtn.disabled = true;
+                elements.flashOnBtn.disabled = true;
+                const capabilities = state.track.getCapabilities ? state.track.getCapabilities() : {};
+                if (!capabilities || !capabilities.torch) {
+                    state.flashBusy = false;
+                    elements.flashOffBtn.disabled = false;
+                    elements.flashOnBtn.disabled = false;
+                    return;
+                }
+
+                // 第一步：立即更新UI狀態（零延遲反應）
+                elements.flashOffBtn.style.display = 'none';
+                elements.flashOnBtn.style.display = 'inline-block';
+                state.flashOn = true;
+
+                // 第二步：執行硬體操作（可能有延遲）
+                try {
+                    await state.track.applyConstraints({ advanced: [{ torch: true }] });
+                } catch (error) {
+                    // 如果硬體操作失敗，恢復UI狀態
+                    elements.flashOffBtn.style.display = 'block';
+                    elements.flashOnBtn.style.display = 'none';
+                    state.flashOn = false;
+                    log(`手電筒開啟失敗：${error.message}`);
+                } finally {
+                    state.flashBusy = false;
+                    elements.flashOffBtn.disabled = false;
+                    elements.flashOnBtn.disabled = false;
+                }
+            }
+
+            /**
+             * 關閉手電筒功能 - UI-first 模式
+             * 第一步：立即更新UI狀態（零延遲）
+             * 第二步：執行硬體操作（可能有延遲）
+             */
+            async function turnOffFlash() {
+                if (!state.track || state.flashBusy) return;
+                state.flashBusy = true;
+                elements.flashOffBtn.disabled = true;
+                elements.flashOnBtn.disabled = true;
+                const capabilities = state.track.getCapabilities ? state.track.getCapabilities() : {};
+                if (!capabilities || !capabilities.torch) {
+                    state.flashBusy = false;
+                    elements.flashOffBtn.disabled = false;
+                    elements.flashOnBtn.disabled = false;
+                    return;
+                }
+
+                // 第一步：立即更新UI狀態（零延遲反應）
+                elements.flashOffBtn.style.display = 'inline-block';
+                elements.flashOnBtn.style.display = 'none';
+                state.flashOn = false;
+
+                // 第二步：執行硬體操作（可能有延遲）
+                try {
+                    await state.track.applyConstraints({ advanced: [{ torch: false }] });
+                } catch (error) {
+                    // 如果硬體操作失敗，恢復UI狀態
+                    elements.flashOffBtn.style.display = 'none';
+                    elements.flashOnBtn.style.display = 'block';
+                    state.flashOn = true;
+                    log(`手電筒關閉失敗：${error.message}`);
+                } finally {
+                    state.flashBusy = false;
+                    elements.flashOffBtn.disabled = false;
+                    elements.flashOnBtn.disabled = false;
+                }
+            }
+            function updateCameraStatusText() {
+                if (!state.track) {
+                    elements.cameraStatus.textContent = '尚未啟動';
+                    return;
+                }
+                const settings = state.track.getSettings();
+                elements.cameraStatus.textContent = `${settings.width || '?'}×${settings.height || '?'} @ ${Math.round(settings.frameRate || 0)}fps`;
+            }
+            function bindEvents() {
+                elements.startBtn.addEventListener('click', () => {
+                    // 防止快速連點開始
+                    if (state.isStarting || state.running) return;
+                    startScanner();
+                });
+                elements.stopBtn.addEventListener('click', () => {
+                    // 先立即隱藏並停用「停止掃描」按鈕，避免重複點擊
+                    elements.stopBtn.style.display = 'none';
+                    elements.stopBtn.disabled = true;
+                    // 立即隱藏 flashOnNew 按鈕
+                    const flashOnNewBtn = document.getElementById('flashOnNew');
+                    if (flashOnNewBtn) {
+                        flashOnNewBtn.style.display = 'none';
+                    }
+                    elements.flashOnBtn.style.display = 'none';
+                    // 防止快速重複停止
+                    if (!state.isStopping) {
+                        stopScanner(false);
+                    }
+                });
+                elements.flashOffBtn.addEventListener('click', turnOnFlash);
+                elements.flashOnBtn.addEventListener('click', turnOffFlash);
+
+                // 將頁尾版本號作為隱藏測試按鈕（於綁定時重新查找，避免一開始抓不到）
+                const appVersionEl = elements.appVersion || document.querySelector('.app-version');
+                if (appVersionEl) {
+                    appVersionEl.style.cursor = 'pointer';
+                    appVersionEl.title = '';
+                    appVersionEl.addEventListener('click', (ev) => {
+                        ev.preventDefault();
+                        triggerTestSuccessUI();
+                    });
+                    // 隱藏管理：雙擊版本號打開管理面板
+                    appVersionEl.addEventListener('dblclick', (ev) => {
+                        ev.preventDefault();
+                        showAdminPanel();
+                    });
+                }
+
+                window.addEventListener('resize', updateRoiOverlay);
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) {
+                        stopScanner(false);
+                    }
+                });
+
+                // 滾動時隱藏 popover
+                window.addEventListener('scroll', hidePopover);
+                // 觸控滑動時也隱藏 popover
+                window.addEventListener('touchmove', hidePopover);
+
+                // 留言版事件
+                initFeedbackSystem();
+            }
+
+            // 簡易隱藏管理面板：清空留言板 / 清空累計訪問
+            function showAdminPanel() {
+                let panel = document.getElementById('adminPanel');
+                if (panel) {
+                    panel.style.display = 'block';
+                    return;
+                }
+                panel = document.createElement('div');
+                panel.id = 'adminPanel';
+                panel.style.position = 'fixed';
+                panel.style.right = '20px';
+                panel.style.bottom = '20px';
+                panel.style.zIndex = '10002';
+                panel.style.background = 'rgba(17,24,39,0.95)';
+                panel.style.border = '1px solid rgba(255,255,255,0.15)';
+                panel.style.boxShadow = '0 10px 30px rgba(0,0,0,0.4)';
+                panel.style.borderRadius = '12px';
+                panel.style.padding = '12px';
+                panel.style.minWidth = '220px';
+                panel.style.backdropFilter = 'blur(8px)';
+
+                panel.innerHTML = `
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
+                        <strong style="color:#e5e7eb;font-size:14px;">管理工具</strong>
+                        <button id="adminCloseBtn" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px;">✕</button>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <button id="btnClearMessages" style="padding:8px 10px;border:none;border-radius:8px;background:#374151;color:#e5e7eb;cursor:pointer;font-size:13px;text-align:left;">🗑️ 清空留言板</button>
+                        <button id="btnClearVisits" style="padding:8px 10px;border:none;border-radius:8px;background:#374151;color:#e5e7eb;cursor:pointer;font-size:13px;text-align:left;">♻️ 清空累計訪問</button>
+                    </div>
+                `;
+
+                document.body.appendChild(panel);
+
+                panel.querySelector('#adminCloseBtn').addEventListener('click', () => {
+                    panel.style.display = 'none';
+                });
+
+                panel.querySelector('#btnClearMessages').addEventListener('click', () => {
+                    if (window.clearAllMessages) {
+                        window.clearAllMessages();
+                    } else {
+                        try {
+                            localStorage.removeItem('bookPlanetMessages');
+                            localStorage.removeItem('bookPlanetReplies');
+                            const messagesDiv = document.getElementById('messages');
+                            if (messagesDiv) messagesDiv.innerHTML = '';
+                        } catch { }
+                    }
+                    alert('留言板已清空');
+                });
+
+                panel.querySelector('#btnClearVisits').addEventListener('click', () => {
+                    if (window.clearVisitStats) {
+                        window.clearVisitStats();
+                    } else {
+                        try {
+                            localStorage.removeItem('bookScannerVisitCount');
+                            localStorage.removeItem('bookScannerLastVisit');
+                            localStorage.removeItem('bookScannerLocalDelta');
+                            const el = document.getElementById('visitCount');
+                            if (el) el.textContent = '0';
+                        } catch { }
+                    }
+                    alert('累計訪問已清空');
+                });
+
+                // 已移除資料集切換功能，僅使用完整版資料
+            }
+
+            // === 留言版功能 ===
+            function initFeedbackSystem() {
+                const feedbackBtn = document.getElementById('feedbackBtn');
+                const feedbackSection = document.getElementById('feedbackSection');
+                const closeFeedback = document.getElementById('closeFeedback');
+                const msgForm = document.getElementById('msgForm');
+                const messagesDiv = document.getElementById('messages');
+
+                // 切換留言版顯示/隱藏
+                function toggleFeedback() {
+                    if (feedbackSection.style.display === 'none') {
+                        feedbackSection.style.display = 'block';
+                        // 顯示留言區時暫停掃描，避免 CPU 佔用造成輸入遲滯
+                        try { stopScanner(false); } catch (e) { }
+                        loadMessages();
+                        initializeNickname();
+                        // 滾動到頁面底部，顯示留言版
+                        setTimeout(() => {
+                            window.scrollTo({
+                                top: document.body.scrollHeight,
+                                behavior: 'smooth'
+                            });
+                        }, 100);
+                    } else {
+                        feedbackSection.style.display = 'none';
+                    }
+                }
+
+                // 載入留言（從外部檔案或本地儲存）
+                // 一次性遷移：首次載入自動清掉舊的本地留言/回覆，避免殘留
+                function performMessageStorageMigration() {
+                    try {
+                        const FLAG = 'bookPlanetMessagesCleared_20251012';
+                        if (!localStorage.getItem(FLAG)) {
+                            localStorage.removeItem('bookPlanetMessages');
+                            localStorage.removeItem('bookPlanetReplies');
+                            localStorage.setItem(FLAG, '1');
+                            console.log('[messages] Cleared local messages/replies by migration');
+                        }
+                    } catch (e) { /* ignore */ }
+                }
+
+                async function loadMessages() {
+                    // 確保在載入前執行清理（僅第一次）
+                    performMessageStorageMigration();
+                    // 顯示載入中
+                    messagesDiv.innerHTML = `
+                        <div class="loading-messages">
+                            <p>📡 正在載入留言...</p>
+                        </div>
+                    `;
+
+                    try {
+                        let messages = [];
+
+                        // 優先從 Google Apps Script API 載入
+                        if (state.uiConfig && state.uiConfig.feedbackApiUrl) {
+                            try {
+                                const response = await fetch(state.uiConfig.feedbackApiUrl);
+                                if (response.ok) {
+                                    const data = await response.json();
+                                    // 將 API 格式轉換成前端格式
+                                    messages = (data.messages || []).map(msg => ({
+                                        id: msg.timestamp,  // 使用 timestamp 作為 id
+                                        name: msg.nickname,
+                                        content: msg.content,
+                                        time: msg.timestamp
+                                    }));
+                                    log('✅ 從 API 載入留言成功');
+                                } else {
+                                    throw new Error(`API 回應錯誤: ${response.status}`);
+                                }
+                            } catch (apiError) {
+                                log(`⚠️ API 載入失敗: ${apiError.message}，嘗試本地載入`);
+                                // API 失敗時使用本地儲存
+                                const storedMessages = localStorage.getItem('bookPlanetMessages');
+                                messages = storedMessages ? JSON.parse(storedMessages) : [];
+                            }
+                        } else {
+                            // 沒有 API URL，使用本地儲存
+                            log('ℹ️ 未設定 API，使用本地儲存');
+                            const storedMessages = localStorage.getItem('bookPlanetMessages');
+                            messages = storedMessages ? JSON.parse(storedMessages) : [];
+                        }
+
+                        // 如果有載入外部檔案，也合併本地的新留言
+                        if (messages.length > 0) {
+                            const localMessages = localStorage.getItem('bookPlanetMessages');
+                            if (localMessages) {
+                                const localParsed = JSON.parse(localMessages);
+                                // 找出本地但不在外部檔案中的留言（新留言）
+                                const newLocalMessages = localParsed.filter(local =>
+                                    !messages.some(external => external.id === local.id)
+                                );
+                                // 將新留言放在最前面
+                                messages = [...newLocalMessages, ...messages];
+                            }
+                        }
+
+                        // 載入並合併回覆
+                        const storedReplies = localStorage.getItem('bookPlanetReplies');
+                        if (storedReplies) {
+                            const replies = JSON.parse(storedReplies);
+                            // 將回覆加到對應的留言中
+                            messages = messages.map(msg => {
+                                const messageReplies = replies.filter(reply => {
+                                    // 比較時都轉成字串，因為parentId可能是數字或字串
+                                    return String(reply.parentId) === String(msg.id || msg.time);
+                                });
+                                if (messageReplies.length > 0) {
+                                    return { ...msg, replies: messageReplies };
+                                }
+                                return msg;
+                            });
+                        }
+
+                        if (messages.length === 0) {
+                            messagesDiv.innerHTML = `
+                                <div class="empty-messages">
+                                    <p>💬 還沒有留言，成為第一個留言的人吧！</p>
+                                </div>
+                            `;
+                        } else {
+                            messagesDiv.innerHTML = messages.map(msg => renderMessage(msg)).join('');
+                            // 綁定回覆按鈕事件
+                            bindReplyEvents();
+                        }
+
+                        log('✅ 留言載入成功');
+
+                    } catch (error) {
+                        log(`❌ 載入留言失敗：${error.message}`);
+
+                        messagesDiv.innerHTML = `
+                            <div class="message error-message" style="text-align: center; color: var(--error-light); background: rgba(220, 38, 38, 0.1); border-color: var(--error);">
+                                <div class="message-content">
+                                    <p style="margin-bottom: 8px;">⚠️ 載入留言時發生錯誤</p>
+                                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">請稍後再試</p>
+                                    <button class="reload-btn" onclick="loadMessages()">
+                                        🔄 重新載入
+                                    </button>
+                                    <button class="clear-btn" title="清除所有留言" onclick="window.clearAllMessages()">
+                                        🗑️
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+
+                // 暴露重新載入函數到全域
+                window.reloadMessages = loadMessages;
+
+                // 渲染單一留言（包含回覆）
+                function renderMessage(msg, isReply = false) {
+                    const replyHtml = msg.replies ? msg.replies.map(reply =>
+                        `<div class="reply-message">${renderMessage(reply, true)}</div>`
+                    ).join('') : '';
+
+                    const replyButton = !isReply ? `
+                        <div class="message-actions">
+                            <button class="reply-btn" data-message-id="${msg.id || msg.time}">
+                                💬 回覆
+                            </button>
+                        </div>
+                        <div class="reply-form" id="replyForm_${msg.id || msg.time}">
+                            <div class="reply-input-group">
+                                <input type="text" placeholder="你的暱稱" id="replyName_${msg.id || msg.time}" value="${(() => {
+                            const profile = localStorage.getItem('bookPlanetUserProfile');
+                            const nick = profile ? JSON.parse(profile).nickname : (localStorage.getItem('bookPlanetUserNickname') || '');
+                            return escapeAttr(nick);
+                        })()}" required />
+                            </div>
+                            <div class="reply-input-group">
+                                <textarea placeholder="回覆內容..." id="replyContent_${msg.id || msg.time}" required></textarea>
+                            </div>
+                            <div class="reply-actions">
+                                <button class="reply-submit-btn" data-message-id="${msg.id || msg.time}">送出回覆</button>
+                                <button class="reply-cancel-btn" data-message-id="${msg.id || msg.time}">取消</button>
+                            </div>
+                        </div>
+                    ` : '';
+
+                    // 直接生成頭像，確保一定有結果
+                    const avatarData = generateAvatar(msg.name || 'Anonymous');
+                    const avatarHTML = createAvatarHTML(avatarData);
+
+                    return `
+                        <div class="message" data-id="${msg.id || msg.time}">
+                            <div class="message-header">
+                                <div class="user-info">
+                                    ${avatarHTML}
+                                    <span class="message-name">${escapeHtml(msg.name)}</span>
+                                </div>
+                                <span class="message-time">${formatTime(msg.time)}</span>
+                            </div>
+                            <p class="message-content">${escapeHtml(msg.content)}</p>
+                            ${replyButton}
+                            ${replyHtml}
+                        </div>
+                    `;
+                }
+
+                // 切換回覆表單顯示
+                function toggleReplyForm(messageId) {
+                    const form = document.getElementById(`replyForm_${messageId}`);
+                    if (form) {
+                        form.classList.toggle('show');
+                        if (form.classList.contains('show')) {
+                            // 聚焦到名稱輸入框
+                            const nameInput = document.getElementById(`replyName_${messageId}`);
+                            if (nameInput) nameInput.focus();
+                        }
+                    }
+                }
+
+                // 送出回覆
+                function submitReply(messageId) {
+                    const nameInput = document.getElementById(`replyName_${messageId}`);
+                    const contentInput = document.getElementById(`replyContent_${messageId}`);
+
+                    if (!nameInput || !contentInput) return;
+
+                    const name = nameInput.value.trim();
+                    const content = contentInput.value.trim();
+
+                    if (!name || !content) {
+                        alert('請填寫暱稱和回覆內容');
+                        return;
+                    }
+
+                    // 建立回覆物件
+                    const reply = {
+                        id: Date.now(),
+                        name: name,
+                        content: content,
+                        time: new Date().toISOString(),
+                        parentId: messageId
+                    };
+
+                    // 更新用戶暱稱（如果用戶手動修改了）
+                    const currentStoredNickname = localStorage.getItem('bookPlanetUserNickname');
+                    if (name !== currentStoredNickname) {
+                        localStorage.setItem('bookPlanetUserNickname', name);
+                    }
+
+                    // 儲存回覆到本地儲存
+                    let storedReplies = localStorage.getItem('bookPlanetReplies');
+                    const replies = storedReplies ? JSON.parse(storedReplies) : [];
+                    replies.push(reply);
+                    localStorage.setItem('bookPlanetReplies', JSON.stringify(replies));
+
+                    // 清空表單並隱藏
+                    nameInput.value = '';
+                    contentInput.value = '';
+                    toggleReplyForm(messageId);
+
+                    // 重新載入留言
+                    loadMessages();
+
+                    log('✅ 回覆已送出');
+                }
+
+                // 綁定回覆事件（由於使用innerHTML，需要重新綁定）
+                function bindReplyEvents() {
+                    // 這個函數暫時不需要做什麼，因為我們使用 onclick
+                }
+
+                // 將toggleReplyForm和submitReply暴露到全域
+                window.toggleReplyForm = toggleReplyForm;
+                window.submitReply = submitReply;
+
+                // 初始化示範留言（僅在第一次訪問時）
+                function initSampleMessages() {
+                    // 已停用示例留言注入，保持留言區為空。
+                    return;
+                }
+
+                // 執行初始化
+                initSampleMessages();
+
+                // 清除所有留言的功能（僅供測試使用）
+                window.clearAllMessages = function () {
+                    if (confirm('確定要清除所有留言嗎？此動作無法復原。')) {
+                        localStorage.removeItem('bookPlanetMessages');
+                        localStorage.removeItem('bookPlanetReplies');
+                        loadMessages();
+                        alert('所有留言已清除');
+                    }
+                };
+
+                // 關閉留言區
+                window.closeFeedback = function () {
+                    const feedbackSection = document.getElementById('feedbackSection');
+                    if (feedbackSection) {
+                        feedbackSection.style.display = 'none';
+                    }
+                };
+
+                // 名字分配系統
+                const nickNames = [
+                    '吉伊卡蛙', '哆啦J夢', '孫陸空', '炭治狼', '肝鐵人', '籠貓', '鎖龍',
+                    '奇芽', '謎豆子', '阿妮亞', '滷夫', '撕紙王', '辣布布', '史努嗶',
+                    '卡皮爸拉', '史笛奇', '鼻卡丘'
+                ];
+
+                // 頭像系統 (使用顏色+字母) - 深色版本
+                const avatarColors = [
+                    '#E53E3E', '#319795', '#3182CE', '#DD6B20', '#38A169',
+                    '#D69E2E', '#9F7AEA', '#3182CE', '#ED8936', '#48BB78',
+                    '#E53E3E', '#3182CE', '#D69E2E', '#4299E1', '#38A169',
+                    '#E53E3E', '#9F7AEA', '#319795', '#D69E2E', '#4299E1'
+                ];
+
+                function generateAvatar(name) {
+                    if (!name || name.length === 0) {
+                        return { char: '?', color: '#6B7280' };
+                    }
+                    const firstChar = name.charAt(0).toUpperCase();
+                    const colorIndex = (name.charCodeAt(0) + name.length) % avatarColors.length;
+                    const color = avatarColors[colorIndex];
+                    return { char: firstChar, color: color };
+                }
+
+                // 簡單的頭像HTML生成函數
+                function createAvatarHTML(avatarData) {
+                    if (!avatarData || !avatarData.char || !avatarData.color) {
+                        return '<div class="user-avatar" style="background-color: #6B7280;">?</div>';
+                    }
+                    return `<div class="user-avatar" style="background-color: ${avatarData.color}">${avatarData.char}</div>`;
+                } function generateUserProfile() {
+                    // 檢查是否已經有分配過的使用者資料
+                    let userProfile = localStorage.getItem('bookPlanetUserProfile');
+
+                    if (userProfile) {
+                        return JSON.parse(userProfile);
+                    }
+
+                    // 獲取已使用的暱稱組合
+                    const usedNicknames = JSON.parse(localStorage.getItem('bookPlanetUsedNicknames') || '[]');
+
+                    // 生成可用的數字（10-99，排除包含4的數字）
+                    const availableNumbers = [];
+                    for (let i = 10; i <= 99; i++) {
+                        if (!i.toString().includes('4')) {
+                            availableNumbers.push(i);
+                        }
+                    }
+
+                    // 嘗試找到可用的暱稱組合
+                    let attempts = 0;
+                    let nickname;
+
+                    while (attempts < 1000) {  // 防止無限循環
+                        const randomName = nickNames[Math.floor(Math.random() * nickNames.length)];
+                        const randomNumber = availableNumbers[Math.floor(Math.random() * availableNumbers.length)];
+                        nickname = randomName + randomNumber;
+
+                        if (!usedNicknames.includes(nickname)) {
+                            break;
+                        }
+                        attempts++;
+                    }
+
+                    // 如果所有組合都用完了，就用時間戳
+                    if (attempts >= 1000) {
+                        nickname = '訪客' + Date.now().toString().slice(-4);
+                    }
+
+                    // 根據暱稱生成頭像
+                    const avatarData = generateAvatar(nickname);
+
+                    // 建立使用者資料
+                    const newUserProfile = {
+                        nickname: nickname,
+                        avatar: avatarData
+                    };
+
+                    // 保存使用者資料
+                    localStorage.setItem('bookPlanetUserProfile', JSON.stringify(newUserProfile));
+                    localStorage.setItem('bookPlanetUserNickname', nickname); // 向下相容
+                    usedNicknames.push(nickname);
+                    localStorage.setItem('bookPlanetUsedNicknames', JSON.stringify(usedNicknames));
+
+                    return newUserProfile;
+                }
+
+                function initializeNickname() {
+                    const nameInput = document.getElementById('name');
+                    if (nameInput) {
+                        const userProfile = generateUserProfile();
+                        nameInput.value = userProfile.nickname;
+                        nameInput.placeholder = userProfile.nickname;
+                    }
+                }
+
+                // 取得使用者頭像
+                function getUserAvatar(username) {
+                    // 首先檢查是否為當前使用者
+                    const userProfile = localStorage.getItem('bookPlanetUserProfile');
+                    if (userProfile) {
+                        const profile = JSON.parse(userProfile);
+                        if (profile.nickname === username) {
+                            return profile.avatar;
+                        }
+                    }
+
+                    // 檢查是否在使用者頭像映射中
+                    const avatarMappings = JSON.parse(localStorage.getItem('bookPlanetAvatarMappings') || '{}');
+                    if (avatarMappings[username]) {
+                        return avatarMappings[username];
+                    }
+
+                    // 為新使用者生成頭像
+                    const avatarData = generateAvatar(username);
+                    avatarMappings[username] = avatarData;
+                    localStorage.setItem('bookPlanetAvatarMappings', JSON.stringify(avatarMappings));
+
+                    return avatarData;
+                }
+
+                // 送出留言
+                async function submitMessage(e) {
+                    e.preventDefault();
+
+                    const name = document.getElementById('name').value.trim();
+                    const content = document.getElementById('content').value.trim();
+
+                    if (!name || !content) {
+                        showAlert('請填寫暱稱和留言內容', 'warning');
+                        return;
+                    }
+
+                    if (name.length > 50) {
+                        showAlert('暱稱不能超過 50 個字符', 'warning');
+                        return;
+                    }
+
+                    if (content.length > 500) {
+                        showAlert('留言內容不能超過 500 個字符', 'warning');
+                        return;
+                    }
+
+                    // 顯示送出中狀態
+                    const submitBtn = document.querySelector('.submit-btn');
+                    const originalText = submitBtn.textContent;
+                    submitBtn.textContent = '📤 送出中...';
+                    submitBtn.disabled = true;
+
+                    try {
+                        // 新增留言
+                        const newMessage = {
+                            id: Date.now(), // 簡單的ID生成
+                            name: name,
+                            content: content,
+                            time: new Date().toISOString()
+                        };
+
+                        // 先儲存到本地儲存（作為備援）
+                        const storedMessages = localStorage.getItem('bookPlanetMessages');
+                        const localMessages = storedMessages ? JSON.parse(storedMessages) : [];
+                        localMessages.unshift(newMessage);
+                        localStorage.setItem('bookPlanetMessages', JSON.stringify(localMessages));
+
+                        // 如果有 API，發送到伺服器
+                        let apiSuccess = false;
+                        if (state.uiConfig && state.uiConfig.feedbackApiUrl) {
+                            try {
+                                // 轉換成 API 期望的格式
+                                const apiMessage = {
+                                    nickname: name,
+                                    content: content,
+                                    timestamp: newMessage.time
+                                };
+
+                                log(`📤 正在發送留言到 API: ${state.uiConfig.feedbackApiUrl}`);
+
+                                // Google Apps Script 需要處理重定向，使用 redirect: 'follow'
+                                const response = await fetch(state.uiConfig.feedbackApiUrl, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'text/plain;charset=utf-8'
+                                    },
+                                    body: JSON.stringify(apiMessage),
+                                    mode: 'cors', // 明確指定 CORS 模式
+                                    redirect: 'follow' // 跟隨重定向（Apps Script 會重定向一次）
+                                });
+
+                                log(`API 回應狀態: ${response.status}`);
+                                log(`API 回應標頭: ${JSON.stringify([...response.headers.entries()])}`);
+
+                                if (!response.ok) {
+                                    const errorText = await response.text();
+                                    log(`API 錯誤回應內容: ${errorText}`);
+                                    throw new Error(`API 回應錯誤: ${response.status} - ${errorText}`);
+                                }
+
+                                const result = await response.json();
+                                log(`API 回應內容: ${JSON.stringify(result)}`);
+
+                                if (result.success) {
+                                    apiSuccess = true;
+                                    log('✅ 留言已成功儲存到 Google Sheets');
+                                } else {
+                                    throw new Error(result.error || '未知錯誤');
+                                }
+                            } catch (apiError) {
+                                log(`⚠️ API 儲存失敗: ${apiError.message}，留言已保存到本地`);
+                                console.error('API 錯誤詳情:', apiError);
+                                // 顯示錯誤給使用者
+                                showAlert(`⚠️ 留言已保存到本地，但無法同步到雲端：${apiError.message}`, 'warning');
+                                // 不要設定 apiSuccess = true，這樣使用者會知道有問題
+                            }
+                        } else {
+                            log(`⚠️ 未設定 API URL，留言僅保存到本地`);
+                            log(`state.uiConfig: ${JSON.stringify(state.uiConfig)}`);
+                            showAlert('⚠️ 留言 API 未設定，僅保存到本地', 'warning');
+                        }
+
+                        // 更新用戶暱稱（如果用戶手動修改了）
+                        const currentStoredNickname = localStorage.getItem('bookPlanetUserNickname');
+                        if (name !== currentStoredNickname) {
+                            localStorage.setItem('bookPlanetUserNickname', name);
+                        }
+
+                        // 重置表單並重新載入留言
+                        msgForm.reset();
+                        loadMessages();
+
+                        // 重新設定暱稱到輸入框
+                        setTimeout(() => {
+                            const nameInput = document.getElementById('name');
+                            if (nameInput) {
+                                nameInput.value = name;
+                            }
+                        }, 100);
+
+                        // 顯示提示訊息（根據 API 是否成功）
+                        if (apiSuccess) {
+                            showAlert('✅ 留言已成功送出並同步到雲端！', 'success');
+                            showFeedbackSuccess();
+                        } else {
+                            showAlert('⚠️ 留言已保存到本地，但無法同步到雲端。請檢查 Console 查看詳情。', 'warning');
+                        }
+
+                    } catch (error) {
+                        log(`❌ 送出留言失敗：${error.message}`);
+                        showAlert('留言送出失敗，請稍後再試', 'error');
+
+                    } finally {
+                        // 恢復按鈕狀態
+                        submitBtn.textContent = originalText;
+                        submitBtn.disabled = false;
+                    }
+                }
+
+                // 顯示提示訊息
+                function showAlert(message, type = 'info') {
+                    // 移除舊的提示
+                    const existingAlert = document.querySelector('.feedback-alert');
+                    if (existingAlert) {
+                        existingAlert.remove();
+                    }
+
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'feedback-alert';
+                    alertDiv.style.cssText = `
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        z-index: 10001;
+                        padding: 12px 20px;
+                        border-radius: 8px;
+                        font-weight: 500;
+                        box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+                        animation: slideInRight 0.3s ease-out;
+                        max-width: 300px;
+                        word-wrap: break-word;
+                    `;
+
+                    // 根據類型設定樣式
+                    switch (type) {
+                        case 'error':
+                            alertDiv.style.background = 'var(--error)';
+                            alertDiv.style.color = 'white';
+                            break;
+                        case 'warning':
+                            alertDiv.style.background = 'var(--warning)';
+                            alertDiv.style.color = 'white';
+                            break;
+                        case 'success':
+                            alertDiv.style.background = 'var(--success)';
+                            alertDiv.style.color = 'white';
+                            break;
+                        default:
+                            alertDiv.style.background = 'var(--primary)';
+                            alertDiv.style.color = 'white';
+                    }
+
+                    alertDiv.textContent = message;
+                    document.body.appendChild(alertDiv);
+
+                    // 自動移除
+                    setTimeout(() => {
+                        if (alertDiv.parentNode) {
+                            alertDiv.style.animation = 'slideOutRight 0.3s ease-in';
+                            setTimeout(() => alertDiv.remove(), 300);
+                        }
+                    }, 4000);
+                }
+
+                // 顯示成功提示
+                function showFeedbackSuccess() {
+                    const submitBtn = document.querySelector('.submit-btn');
+                    const originalText = submitBtn.textContent;
+
+                    submitBtn.textContent = '✅ 留言成功！';
+                    submitBtn.style.background = 'var(--success)';
+
+                    setTimeout(() => {
+                        submitBtn.textContent = originalText;
+                        submitBtn.style.background = 'var(--primary)';
+                    }, 2000);
+                }
+
+                // HTML 轉義（防 XSS - 文字內容）
+                function escapeHtml(text) {
+                    const div = document.createElement('div');
+                    div.textContent = text;
+                    return div.innerHTML;
+                }
+
+                // 屬性值轉義（防 XSS - 屬性情境，如 value / title）
+                function escapeAttr(text) {
+                    if (text == null) return '';
+                    return String(text)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
+                }
+
+                // 時間格式化
+                function formatTime(timeStr) {
+                    try {
+                        return new Date(timeStr).toLocaleString('zh-TW', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        });
+                    } catch {
+                        return '時間不明';
+                    }
+                }
+
+                // 綁定事件
+                if (feedbackBtn) {
+                    feedbackBtn.addEventListener('click', toggleFeedback);
+                }
+
+                if (closeFeedback) {
+                    closeFeedback.addEventListener('click', () => {
+                        feedbackSection.style.display = 'none';
+                    });
+                }
+
+                if (msgForm) {
+                    msgForm.addEventListener('submit', submitMessage);
+                }
+
+                // 改善輸入框點擊反應：一聚焦就暫停掃描，降低主執行緒負載
+                const nameInputEl = document.getElementById('name');
+                const contentInputEl = document.getElementById('content');
+                if (nameInputEl) {
+                    nameInputEl.addEventListener('focus', () => {
+                        try { stopScanner(false); } catch (e) { }
+                    });
+                }
+                if (contentInputEl) {
+                    contentInputEl.addEventListener('focus', () => {
+                        try { stopScanner(false); } catch (e) { }
+                    });
+                }
+
+                // 添加事件委托優化留言點擊性能
+                if (messagesDiv) {
+                    messagesDiv.addEventListener('click', (event) => {
+                        const target = event.target;
+
+                        // 處理留言名稱點擊
+                        if (target.classList.contains('message-name')) {
+                            const messageElement = target.closest('.message');
+                            const messageId = messageElement.getAttribute('data-id');
+                            if (messageId) {
+                                toggleReplyForm(messageId);
+                            }
+                        }
+
+                        // 處理留言內容點擊
+                        if (target.classList.contains('message-content')) {
+                            const messageElement = target.closest('.message');
+                            const messageId = messageElement.getAttribute('data-id');
+                            if (messageId) {
+                                toggleReplyForm(messageId);
+                            }
+                        }
+
+                        // 處理回覆按鈕點擊
+                        if (target.classList.contains('reply-btn')) {
+                            const messageElement = target.closest('.message');
+                            const messageId = messageElement.getAttribute('data-id');
+                            if (messageId) {
+                                toggleReplyForm(messageId);
+                            }
+                        }
+
+                        // 處理送出回覆按鈕點擊
+                        if (target.classList.contains('reply-submit-btn')) {
+                            const messageElement = target.closest('.message');
+                            const messageId = messageElement.getAttribute('data-id');
+                            if (messageId) {
+                                submitReply(messageId);
+                            }
+                        }
+
+                        // 處理取消回覆按鈕點擊
+                        if (target.classList.contains('reply-cancel-btn')) {
+                            const messageElement = target.closest('.message');
+                            const messageId = messageElement.getAttribute('data-id');
+                            if (messageId) {
+                                toggleReplyForm(messageId);
+                            }
+                        }
+                    });
+                }
+            }
+
+            // 等待 DOM 完全載入
+            document.addEventListener('DOMContentLoaded', async () => {
+                // 首先載入設定檔案
+                await loadScanConfig();
+
+                initDetectors();
+                bindEvents();
+                loadBookList();
+                // initializeNickname() 僅在留言板顯示時觸發
+
+                // 檢查基本功能
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    elements.resultCard.classList.add('error');
+                    elements.resultCard.textContent = '❌ 此瀏覽器不支援攝影機功能，請使用較新的瀏覽器。';
+                    elements.startBtn.disabled = true;
+                }
+            });
+        })();
+    </script>
+
+    <!-- 頁面底部資訊 -->
+    <footer class="page-footer">
+        <div class="footer-content">
+            <!-- 使用統計區塊 -->
+            <div class="stats-section">
+                <h3>📊 使用統計</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-number" id="visitCount">載入中...</span>
+                        <span class="stat-label">累計訪問</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="scanCount">0</span>
+                        <span class="stat-label">累計掃描</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="bookCount">載入中...</span>
+                        <span class="stat-label">書籍資料庫</span>
+                    </div>
+                </div>
+            </div>
+            <!-- 聯繫作者區塊 -->
+            <div class="contact-section">
+                <div class="contact-links">
+                    <button id="feedbackBtn" class="contact-item feedback-btn">💡 留言回饋</button>
+                    <a href="mailto:colinjen88@gmail.com?subject=布可掃描器" class="contact-item">⭐ 寫信給作者</a>
+                </div>
+            </div>
+
+            <!-- 版權資訊 -->
+            <div class="copyright-section">
+                <div class="app-info">
+                    <span class="app-title">📘 查詢布可星球條碼小工具</span>
+                    <span class="app-version">v2.0</span>
+                </div>
+                <div class="copyright-text">
+                    <span>© 2025 教育用途 | Made with ❤️ in Taiwan</span>
+                    <span class="update-time">最後更新：2026年3月6日</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 留言版區塊 (初始隱藏，放置在最後面) -->
+    <div class="feedback-section" id="feedbackSection" style="display: none; margin-top: 100px;">
+        <div class="feedback-container">
+            <button class="feedback-close-btn" onclick="closeFeedback()" title="關閉留言區">✕ 關閉留言</button>
+            <h3>💬 留言回饋</h3>
+            <div class="feedback-form">
+                <form id="msgForm">
+                    <div class="input-group">
+                        <input type="text" id="name" placeholder="你的暱稱" required />
+                    </div>
+                    <div class="input-group">
+                        <textarea id="content" rows="4" placeholder="請留下你的建議或回饋..." required></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="submit-btn">📝 送出留言</button>
+                        <button type="button" id="closeFeedback" class="close-btn">✕ 關閉</button>
+                    </div>
+                </form>
+            </div>
+            <div class="messages-container">
+                <h4>📋 最新留言</h4>
+                <div id="messages" class="messages-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // === 統計功能模組 ===
+        (function () {
+            // 常數定義
+            const VISIT_COOLDOWN_MS = 15 * 60 * 1000; // 15分鐘冷卻時間
+            const STORAGE_KEYS = {
+                visitCount: 'bookScannerVisitCount',
+                lastVisit: 'bookScannerLastVisit'
+            };
+
+            // 內部狀態（累計掃描數使用 localStorage 持久化）
+            const STORAGE_SCAN_TOTAL = 'bookScannerTotalScanCount';
+            const SCAN_BASELINE = 132; // 累計掃描基準值
+            let scanCountStored = localStorage.getItem(STORAGE_SCAN_TOTAL);
+            let scanCount = parseInt(scanCountStored);
+            if (isNaN(scanCount) || scanCount < SCAN_BASELINE) {
+                scanCount = SCAN_BASELINE;
+                localStorage.setItem(STORAGE_SCAN_TOTAL, String(scanCount));
+            }
+
+            /**
+             * 更新掃描次數
+             */
+            function updateScanCount() {
+                scanCount++;
+                localStorage.setItem(STORAGE_SCAN_TOTAL, String(scanCount));
+                const element = document.getElementById('scanCount');
+                if (element) element.textContent = scanCount.toLocaleString();
+            }
+
+            /**
+             * 載入並顯示統計資料（從外部檔案或本地儲存）
+             */
+            async function loadStats() {
+                let remoteVisitBase = 0;
+                const disableRemoteBase = localStorage.getItem('bookScannerDisableRemoteBase') === '1';
+                if (!disableRemoteBase) {
+                    try {
+                        // 嘗試從外部檔案載入統計資料
+                        const response = await fetch('./data/stats.json');
+                        if (response.ok) {
+                            const stats = await response.json();
+                            const newBase = parseInt(stats.visitCount || 0) || 0;
+                            // 若遠端基準變動，重置本地增量，避免舊增量疊加
+                            const baseKey = 'bookScannerRemoteBase';
+                            const lastBase = parseInt(localStorage.getItem(baseKey) || '0');
+                            if (newBase !== lastBase) {
+                                localStorage.setItem('bookScannerLocalDelta', '0');
+                                localStorage.setItem(baseKey, String(newBase));
+                            }
+                            remoteVisitBase = newBase;
+                            console.log('✅ 從外部檔案載入統計資料成功');
+                        }
+                    } catch (error) {
+                        console.log('ℹ️ 外部檔案載入失敗，使用本地統計');
+                    }
+                } else {
+                    console.log('ℹ️ 已停用遠端訪問基準（清空後的本地模式）');
+                }
+
+                // 使用遠端基準數（若有）+ 本地 15 分鐘冷卻累加
+                updateVisitCountLocal(remoteVisitBase);
+            }
+
+            /**
+             * 獲取並顯示訪問次數（避免15分鐘內重複累計）- 本地版本
+             */
+            function updateVisitCountLocal(baseCount = 0) {
+                const now = Date.now();
+                const lastVisitTime = parseInt(localStorage.getItem(STORAGE_KEYS.lastVisit) || '0');
+                const localDeltaKey = 'bookScannerLocalDelta';
+                let localDelta = parseInt(localStorage.getItem(localDeltaKey) || '0');
+
+                // 若提供遠端基準，使用本地增量機制；否則維持舊邏輯（相容）
+                if (baseCount > 0) {
+                    if (!lastVisitTime || (now - lastVisitTime) > VISIT_COOLDOWN_MS) {
+                        localDelta += 1;
+                        localStorage.setItem(localDeltaKey, localDelta);
+                        localStorage.setItem(STORAGE_KEYS.lastVisit, now.toString());
+                    }
+                    const effective = baseCount + localDelta;
+                    const el = document.getElementById('visitCount');
+                    if (el) el.textContent = effective.toLocaleString();
+                    return;
+                }
+
+                // 舊相容邏輯（沒有遠端基準時）
+                const visitCount = parseInt(localStorage.getItem(STORAGE_KEYS.visitCount) || '0');
+                if (!lastVisitTime || (now - lastVisitTime) > VISIT_COOLDOWN_MS) {
+                    const newVisitCount = visitCount + 1;
+                    localStorage.setItem(STORAGE_KEYS.visitCount, newVisitCount);
+                    localStorage.setItem(STORAGE_KEYS.lastVisit, now.toString());
+                    const element = document.getElementById('visitCount');
+                    if (element) element.textContent = newVisitCount.toLocaleString();
+                } else {
+                    const element = document.getElementById('visitCount');
+                    if (element) element.textContent = visitCount.toLocaleString();
+                }
+            }
+
+            // 更新書籍資料庫數量
+            function updateBookCount() {
+                // 監聽書籍載入完成事件
+                window.addEventListener('booksLoaded', function (event) {
+                    const bookCount = event.detail.count;
+                    document.getElementById('bookCount').textContent = bookCount.toLocaleString();
+                });
+
+                // 監聽書籍載入失敗事件
+                window.addEventListener('booksLoadError', function () {
+                    document.getElementById('bookCount').textContent = '載入失敗';
+                });
+
+                // 備用檢查機制（以防事件系統失敗）
+                const checkBookList = () => {
+                    if (window.state && window.state.bookList && window.state.bookList.length > 0) {
+                        document.getElementById('bookCount').textContent = window.state.bookList.length.toLocaleString();
+                        return true;
+                    }
+                    return false;
+                };
+
+                // 延遲檢查，確保能捕捉到書籍數量
+                setTimeout(() => {
+                    if (!checkBookList()) {
+                        // 如果還是沒有數據，嘗試直接載入
+                        fetch('data/books_list.json')
+                            .then(response => response.json())
+                            .then(bookList => {
+                                document.getElementById('bookCount').textContent = bookList.length.toLocaleString();
+                            })
+                            .catch(error => {
+                                console.log('載入書籍數量失敗:', error);
+                                document.getElementById('bookCount').textContent = '載入失敗';
+                            });
+                    }
+                }, 2000);
+            }
+
+            // 監聽掃描成功事件
+            document.addEventListener('DOMContentLoaded', function () {
+                loadStats();
+                updateBookCount();
+                // 初始化累計掃描數顯示
+                const scanEl = document.getElementById('scanCount');
+                if (scanEl) scanEl.textContent = scanCount.toLocaleString();
+
+                // 監聽掃描成功（當結果卡片顯示成功時）
+                const observer = new MutationObserver(function (mutations) {
+                    mutations.forEach(function (mutation) {
+                        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                            const target = mutation.target;
+                            if (target.classList.contains('success')) {
+                                // 測試模式不計數
+                                if (window.__TEST_SUCCESS) {
+                                    window.__TEST_SUCCESS = false;
+                                    return;
+                                }
+                                updateScanCount();
+                            }
+                        }
+                    });
+                });
+
+                const resultCard = document.getElementById('resultCard');
+                if (resultCard) {
+                    observer.observe(resultCard, { attributes: true });
+                }
+            });
+
+            // 導出：清空累計訪問與掃描
+            window.clearVisitStats = function () {
+                try {
+                    localStorage.removeItem('bookScannerVisitCount');
+                    localStorage.removeItem('bookScannerLastVisit');
+                    localStorage.removeItem('bookScannerLocalDelta');
+                    localStorage.setItem('bookScannerDisableRemoteBase', '1');
+                    localStorage.removeItem('bookScannerTotalScanCount');
+                } catch { }
+                const visitEl = document.getElementById('visitCount');
+                if (visitEl) visitEl.textContent = '0';
+                const scanEl = document.getElementById('scanCount');
+                if (scanEl) scanEl.textContent = '0';
+            }
+        })();
+    </script>
+</body>
+
+</html>
