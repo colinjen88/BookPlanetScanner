@@ -2,7 +2,7 @@
 // @name         布可星球快速登入助手
 // @name:en      BookPlanet Quick Login Helper
 // @namespace    https://github.com/colinjen/BookPlanetScanner
-// @version      1.0.0
+// @version      1.1.0
 // @description  自動填寫布可星球學生登入代碼，配合 PWA 實現一鍵登入！
 // @description:en  Auto-fill student login code for BookPlanet Quiz system
 // @author       Colin Jen
@@ -109,13 +109,20 @@
         }
     }
     
+    let fillRetries = 0;
+    const MAX_FILL_RETRIES = 10;
+
     function fillCodeAndSubmit() {
-        // 2. 填入代碼
         const codeInput = document.getElementById('ctl00_Main_login1_txtStdClassSeat');
         if (!codeInput) {
-            log('找不到代碼輸入框，可能頁面尚未更新');
-            // 重試
-            setTimeout(fillCodeAndSubmit, 500);
+            fillRetries++;
+            if (fillRetries < MAX_FILL_RETRIES) {
+                log('找不到代碼輸入框，重試 ' + fillRetries + '/' + MAX_FILL_RETRIES);
+                setTimeout(fillCodeAndSubmit, 500);
+            } else {
+                log('超過重試上限，停止自動填入');
+                showToast('找不到輸入框，請手動填入代碼：' + code);
+            }
             return;
         }
         
@@ -124,21 +131,22 @@
         codeInput.dispatchEvent(new Event('change', { bubbles: true }));
         log('已填入代碼');
         
-        // 3. 清除 URL hash (避免重新整理時再次觸發)
         try {
             history.replaceState(null, '', window.location.pathname + window.location.search);
         } catch (e) {
             log('無法清除 hash: ' + e);
         }
         
-        // 4. 短暫延遲後自動送出
         setTimeout(() => {
-            const submitBtn = document.getElementById('ctl00_Main_login1_btnNext');
+            const submitBtn =
+                document.getElementById('ctl00_Main_login1_LoginButton') ||
+                document.getElementById('ctl00_Main_login1_btnNext');
             if (submitBtn) {
                 log('正在送出表單...');
                 submitBtn.click();
             } else {
                 log('找不到送出按鈕');
+                showToast('已填入代碼，請手動點擊「下一步」');
             }
         }, 500);
     }

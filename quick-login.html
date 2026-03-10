@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>布可快速登入 | 布可星球</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --accent: #10b981;
+            --accent-hover: #059669;
+            --warn: #f59e0b;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 28px;
+            max-width: 380px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        h1 { font-size: 1.35rem; margin: 0 0 8px 0; }
+        .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 24px; }
+        .row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .row label { flex: 0 0 64px; font-size: 0.95rem; }
+        .row input, .row select {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            background: #0f172a;
+            color: var(--text);
+            font-size: 1rem;
+        }
+        .row input:focus, .row select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .code-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 4px;
+            margin-bottom: 8px;
+        }
+        .code-row .code-label {
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+        .code-row strong { color: var(--accent); font-size: 1.1rem; letter-spacing: 2px; }
+        .copy-btn {
+            padding: 4px 10px;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--muted);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .copy-btn:hover { background: #334155; color: var(--text); }
+        .copy-btn.copied { border-color: var(--accent); color: var(--accent); }
+        .option-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+        .option-row label { cursor: pointer; }
+        .option-row input[type="checkbox"] {
+            accent-color: var(--accent);
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+        .btn-row { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .btn {
+            padding: 14px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-main {
+            background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+            color: white;
+        }
+        .btn-main:hover { filter: brightness(1.1); }
+        .btn-main:disabled { opacity: 0.6; cursor: not-allowed; filter: none; }
+        .btn-save {
+            background: #334155;
+            color: var(--text);
+        }
+        .btn-save:hover { background: #475569; }
+        .btn-sec {
+            background: transparent;
+            color: var(--muted);
+            border: 1px solid #334155;
+        }
+        .btn-sec:hover { background: #334155; color: var(--text); }
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            z-index: 99999;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            opacity: 0;
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        .toast.success { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+        .toast.info { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; }
+        .toast.warn { background: linear-gradient(135deg, #f59e0b, #d97706); color: #1e293b; }
+
+        .guide-box {
+            margin-top: 20px;
+            padding: 14px;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            font-size: 0.82rem;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+        .guide-box summary {
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--text);
+            font-size: 0.88rem;
+        }
+        .guide-box ol { margin: 10px 0 0 0; padding-left: 1.4em; }
+        .guide-box li { margin-bottom: 6px; }
+        .guide-box a { color: var(--accent); }
+        .guide-box .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-required { background: #7f1d1d; color: #fca5a5; }
+        .badge-optional { background: #1e3a5f; color: #93c5fd; }
+    </style>
+</head>
+<body>
+    <div id="toast" class="toast"></div>
+
+    <div class="card">
+        <h1>布可快速登入</h1>
+        <p class="sub">設定年級／班級／座號，一鍵開啟官網並自動帶入</p>
+
+        <div class="row">
+            <label for="grade">年級</label>
+            <input type="number" id="grade" min="1" max="9" placeholder="1–9" inputmode="numeric">
+        </div>
+        <div class="row">
+            <label for="classNum">班級</label>
+            <input type="number" id="classNum" min="1" max="99" placeholder="例：3" inputmode="numeric">
+        </div>
+        <div class="row">
+            <label for="seat">座號</label>
+            <input type="number" id="seat" min="1" max="99" placeholder="例：12" inputmode="numeric">
+        </div>
+
+        <div class="code-row">
+            <span class="code-label">登入代碼：</span>
+            <strong id="codeDisplay">-----</strong>
+            <button type="button" class="copy-btn" id="copyBtn" title="複製代碼">複製</button>
+        </div>
+
+        <div class="option-row">
+            <input type="checkbox" id="sameTab">
+            <label for="sameTab">在同一分頁開啟（不另開新視窗）</label>
+        </div>
+
+        <div class="btn-row">
+            <button type="button" class="btn btn-save" id="saveBtn">儲存設定</button>
+            <button type="button" class="btn btn-main" id="goBtn" disabled>啟動登入</button>
+            <a href="index.html" class="btn btn-sec" style="text-align:center;text-decoration:none;">← 回掃描器</a>
+        </div>
+
+        <details class="guide-box">
+            <summary>使用說明與安裝教學</summary>
+            <ol>
+                <li>
+                    <strong>安裝 Tampermonkey</strong> <span class="badge badge-required">電腦版必裝</span><br>
+                    <a href="https://www.tampermonkey.net/" target="_blank" rel="noopener">官方下載頁</a>（支援 Chrome / Edge / Firefox）
+                </li>
+                <li>
+                    <strong>安裝「布可快速登入助手」腳本</strong> <span class="badge badge-required">電腦版必裝</span><br>
+                    <a href="userscript/bookplanet-autofill.user.js" target="_blank" rel="noopener">點此安裝腳本</a>
+                    （安裝後 Tampermonkey 會跳出確認，點「安裝」即可）
+                </li>
+                <li>填入年級、班級、座號 → 點「儲存設定」（只需設一次）</li>
+                <li>之後每次只要點「啟動登入」，官網會自動帶入代碼並登入</li>
+            </ol>
+            <p style="margin:10px 0 0;">
+                <strong>手機使用者：</strong> <span class="badge badge-optional">免裝腳本</span><br>
+                iOS 不支援 Tampermonkey，請點「複製」按鈕複製 5 碼代碼，再到官網手動貼上。
+            </p>
+        </details>
+    </div>
+
+    <script>
+        (function () {
+            var STORAGE_KEY = 'tn_openid_quick_login';
+            var OPENID_URL = 'https://openid.tn.edu.tw/op/login.aspx?ReturnUrl=%2fop%2fdecide.aspx';
+
+            var grade = document.getElementById('grade');
+            var classNum = document.getElementById('classNum');
+            var seat = document.getElementById('seat');
+            var codeDisplay = document.getElementById('codeDisplay');
+            var copyBtn = document.getElementById('copyBtn');
+            var sameTab = document.getElementById('sameTab');
+            var saveBtn = document.getElementById('saveBtn');
+            var goBtn = document.getElementById('goBtn');
+            var toastEl = document.getElementById('toast');
+
+            var toastTimer = null;
+            function showToast(msg, type) {
+                type = type || 'info';
+                clearTimeout(toastTimer);
+                toastEl.textContent = msg;
+                toastEl.className = 'toast ' + type;
+                requestAnimationFrame(function () {
+                    toastEl.classList.add('show');
+                });
+                toastTimer = setTimeout(function () {
+                    toastEl.classList.remove('show');
+                }, 2500);
+            }
+
+            function getCode() {
+                var g = parseInt(grade.value, 10) || 0;
+                var c = parseInt(classNum.value, 10) || 0;
+                var s = parseInt(seat.value, 10) || 0;
+                if (g < 1 || g > 9 || c < 1 || c > 99 || s < 1 || s > 99) return null;
+                var code = '' + g + String(c).padStart(2, '0') + String(s).padStart(2, '0');
+                return code.length === 5 ? code : null;
+            }
+
+            function updateCodeDisplay() {
+                var code = getCode();
+                codeDisplay.textContent = code ? code : '-----';
+                goBtn.disabled = !code;
+            }
+
+            function loadSaved() {
+                try {
+                    var raw = localStorage.getItem(STORAGE_KEY);
+                    if (!raw) return;
+                    var o = JSON.parse(raw);
+                    if (o.grade) grade.value = o.grade;
+                    if (o.classNum) classNum.value = o.classNum;
+                    if (o.seat) seat.value = o.seat;
+                    if (o.sameTab) sameTab.checked = true;
+                } catch (e) {}
+                updateCodeDisplay();
+            }
+
+            function save() {
+                var code = getCode();
+                if (!code) {
+                    showToast('請填寫年級（1–9）、班級、座號', 'warn');
+                    return;
+                }
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                        grade: grade.value,
+                        classNum: classNum.value,
+                        seat: seat.value,
+                        sameTab: sameTab.checked
+                    }));
+                } catch (e) {}
+                showToast('已儲存！下次可直接點「啟動登入」', 'success');
+                updateCodeDisplay();
+            }
+
+            function copyCode() {
+                var code = getCode();
+                if (!code) {
+                    showToast('請先填寫年級、班級、座號', 'warn');
+                    return;
+                }
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(code).then(function () {
+                        onCopied();
+                    }, fallbackCopy);
+                } else {
+                    fallbackCopy();
+                }
+                function fallbackCopy() {
+                    var ta = document.createElement('textarea');
+                    ta.value = code;
+                    ta.style.cssText = 'position:fixed;opacity:0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    try { document.execCommand('copy'); onCopied(); } catch (e) {
+                        showToast('複製失敗，請手動複製：' + code, 'warn');
+                    }
+                    ta.remove();
+                }
+                function onCopied() {
+                    showToast('已複製代碼 ' + code, 'success');
+                    copyBtn.textContent = '已複製';
+                    copyBtn.classList.add('copied');
+                    setTimeout(function () {
+                        copyBtn.textContent = '複製';
+                        copyBtn.classList.remove('copied');
+                    }, 2000);
+                }
+            }
+
+            function launchLogin() {
+                var code = getCode();
+                if (!code) {
+                    showToast('請先填寫年級、班級、座號', 'warn');
+                    return;
+                }
+
+                var url = OPENID_URL + '#' + code;
+
+                if (sameTab.checked) {
+                    window.location.href = url;
+                } else {
+                    var win = window.open(url, '_blank', 'noopener');
+                    if (!win) {
+                        showToast('彈出視窗被封鎖，改用同頁跳轉', 'warn');
+                        setTimeout(function () { window.location.href = url; }, 800);
+                    }
+                }
+            }
+
+            grade.addEventListener('input', updateCodeDisplay);
+            grade.addEventListener('change', updateCodeDisplay);
+            classNum.addEventListener('input', updateCodeDisplay);
+            classNum.addEventListener('change', updateCodeDisplay);
+            seat.addEventListener('input', updateCodeDisplay);
+            seat.addEventListener('change', updateCodeDisplay);
+            saveBtn.addEventListener('click', save);
+            goBtn.addEventListener('click', launchLogin);
+            copyBtn.addEventListener('click', copyCode);
+
+            loadSaved();
+        })();
+    </script>
+</body>
+</html>

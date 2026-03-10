@@ -2,7 +2,7 @@
 
 # 布可星球選書條碼掃描器 (Book Planet Scanner)
 
-[![Current Version](https://img.shields.io/badge/version-v2.0.1-blue.svg)](./docs/project/VERSION.md)
+[![Current Version](https://img.shields.io/badge/version-v2.0.2-blue.svg)](./docs/project/VERSION.md)
 [![Status Active](https://img.shields.io/badge/status-active-success.svg)](#)
 [![Performance Optimized](https://img.shields.io/badge/performance-LUT_Optimized-ff69b4.svg)](#)
 
@@ -31,6 +31,7 @@
 ```text
 📦 BookPlanetScanner (專案根目錄)
 ├── index.html              # 🎯 主程式：單一頁面 Web 應用，包含所有掃描與介面互動邏輯
+├── quick-login.html        # 🚀 布可快速登入：年級/班級/座號 → 一鍵開啟官網並自動帶入（搭配 userscript）
 ├── scan.html               # 🔄 向後相容轉址頁，自動 301 導向 https://book.seobi.tw/
 ├── README.md               # 📖 專案說明與架構 (本檔案)
 ├── SECURITY.md             # 🔒 資安政策說明 (CSP、依賴限制)
@@ -69,8 +70,22 @@
 │       └── DEPLOYMENT_GUIDE.md   # 🌍 跨平台部署說明、Cloudflare 整合方式
 │
 ├── archive/                # 🗃️ 舊版開發元件與功能備份封存
-└── userscript/             # 🐒 Tampermonkey / Greasemonkey 自動登入腳本
+└── userscript/             # 🐒 布可快速登入助手（Tampermonkey 腳本，搭配 quick-login.html）
 ```
+
+---
+
+## 🚀 布可快速登入 (Quick Login)
+
+專案提供**布可快速登入**流程，搭配臺南市教育局 OpenID，讓學生一鍵完成登入：
+
+1. 開啟 [布可快速登入](https://book.seobi.tw/quick-login.html)（或本機 `quick-login.html`）
+2. 輸入年級、班級、座號 → 儲存設定（僅首次）
+3. 點「啟動登入」→ 另開官網登入頁，腳本會自動帶入代碼並送出
+
+**電腦**：需安裝 [Tampermonkey](https://www.tampermonkey.net/) 與專案內 [布可快速登入助手](userscript/bookplanet-autofill.user.js) 腳本。  
+**手機**：可使用「複製」按鈕複製 5 碼代碼，到官網手動貼上。  
+詳細說明見 [userscript/README.md](userscript/README.md)。
 
 ---
 
@@ -120,6 +135,6 @@
 
 ---
 <div align="center">
-  <sub>最後更新：2026/03 | 版本：v2.0.1 - "Scanner Performance & UI Fix"</sub><br>
+  <sub>最後更新：2026/03 | 版本：v2.0.2 - "Quick Login & Docs"</sub><br>
   <sub>Designed for 📚 Book Planet</sub>
 </div>
